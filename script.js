@@ -1,7 +1,7 @@
 let slides = [];
 let currentIndex = 0;
 function loadSlides() {
-  fetch("http://localhost:3000/api/slides")
+  fetch("https://llef-slide-app.onrender.com/api/slides")
     .then(function (response) {
       return response.json(); })
 
