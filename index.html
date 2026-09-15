@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Slide Viewer</title>
+<style>
+    body {
+      text-align: center;
+      margin-top: 50px;}
+    #container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px; }
+    #slideBox {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      width: 900px;
+      min-height: 400px;
+      border: 1px solid #ccc;
+      padding: 20px; }
+    #slideBox h2 {
+      font-size: 30px;
+      font-weight: bold; }
+    #slideBox p {
+      font-size: 20px;
+      font-weight: bold; }
+    #slideBox img {
+      display: block;
+      width: 250px;
+      margin: 10px auto;}
+    .rowBlock {
+      border-bottom: 1px solid #eee;
+      padding-bottom: 12px;
+      margin-bottom: 12px;
+      width: 100%; }
+    .schemeLabel {
+      font-size: 12px;
+      color: #888;
+      font-weight: bold;
+      text-transform: uppercase;}
+    .studyMaterials {
+      font-size: 13px;
+      color: #555;
+      font-weight: normal;
+      margin-top: 4px;}
+    .timeText {
+      font-size: 13px;
+      color: gray;
+      font-weight: normal;
+      margin-top: 4px;}
+
+    #prevBtn, #nextBtn {
+      font-size: 24px;
+      padding: 10px 15px;
+      cursor: pointer;
+      border-radius: 8px;}
+
+    #speakBtn {
+      margin-top: 20px;
+      font-size: 16px;
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 8px;}
+
+    .vqInputBox {
+      font-size: 16px;
+      padding: 6px;
+      margin-top: 10px;
+      width: 250px;}
+
+    .vqSubmitBtn {
+      font-size: 16px;
+      padding: 6px 12px;
+      margin-left: 8px;
+      cursor: pointer;}
+
+    .vqResponseText {
+      margin-top: 10px;
+      font-size: 16px;
+      font-weight: bold;}
+</style>
+</head>
+<body>
+
+<div id="container">
+    <button id="prevBtn">&#10094;</button>
+    <span id="slideBox"></span>
+    <button id="nextBtn">&#10095;</button>
+</div>
+
+<button id="speakBtn">Play Audio</button>
+
+<script src="script.js"></script>
+</body>
+</html>
