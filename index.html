@@ -3,102 +3,140 @@
 <head>
 <title>Slide Viewer</title>
 <style>
-    body {
-      text-align: center;
-      margin-top: 50px;}
-    #container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 20px; }
-    #slideBox {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      width: 900px;
-      min-height: 400px;
-      border: 1px solid #ccc;
-      padding: 20px; }
-    #slideBox h2 {
-      font-size: 30px;
-      font-weight: bold; }
-    #slideBox p {
-      font-size: 20px;
-      font-weight: bold; }
-    #slideBox img {
-      display: block;
-      width: 250px;
-      margin: 10px auto;}
-    .rowBlock {
-      border-bottom: 1px solid #eee;
-      padding-bottom: 12px;
-      margin-bottom: 12px;
-      width: 100%; }
-    .schemeLabel {
-      font-size: 12px;
-      color: #888;
-      font-weight: bold;
-      text-transform: uppercase;}
-    .studyMaterials {
-      font-size: 13px;
-      color: #555;
-      font-weight: normal;
-      margin-top: 4px;}
-    .timeText {
-      font-size: 13px;
-      color: gray;
-      font-weight: normal;
-      margin-top: 4px;}
+  * {
+    box-sizing: border-box;}
+  body {
+    font-family: 'Georgia', serif;
+    text-align: center;
+    margin: 0;
+    padding: 50px 20px;
+    background: linear-gradient(135deg, #eef2f3, #dfe9f3);
+    min-height: 100vh;}
+  #container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 25px;}
+  #slideBox {
+    display: flex;
+    flex-direction: column;
+    width: 900px;
+    min-height: 480px;
+    background-color: white;
+    border-radius: 14px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    overflow: hidden;}
+  .slideHeader {
+    background: linear-gradient(90deg, #2c3e50, #3d5a75);
+    color: white;
+    padding: 20px 30px;
+    font-size: 28px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-align: center;}
+  .slideBody {
+    flex: 1;
+    padding: 35px;
+    text-align: center;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;}
+  .slideBody img {
+    display: block;
+    width: 220px;
+    margin: 15px auto;
+    border-radius: 8px;}
+  .slideBody p {
+    font-size: 19px;
+    line-height: 1.6;
+    margin: 12px 0;
+    color: #2c3e50;
+    animation: fadeIn 0.5s ease-in;}
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }}
+  .slideFooter {
+    background-color: #f4f6f7;
+    padding: 12px 30px;
+    font-size: 13px;
+    color: #777;
+    text-align: center;
+    border-top: 1px solid #e0e0e0; }
+  .rowBlock {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    width: 100%;
+    animation: fadeIn 0.5s ease-in; }
+  .studyMaterials {
+    font-size: 13px;
+    color: #777;
+    margin-top: 4px;
+    font-style: italic;}
 
-    #prevBtn, #nextBtn {
-      font-size: 24px;
-      padding: 10px 15px;
-      cursor: pointer;
-      border-radius: 8px;}
-
-    #speakBtn {
-      margin-top: 20px;
-      font-size: 16px;
-      padding: 8px 16px;
-      cursor: pointer;
-      border-radius: 8px;}
-
-    #progressText {
-      margin-top: 10px;
-      font-size: 14px;
-      color: gray;}
-
-    .vqInputBox {
-      font-size: 16px;
-      padding: 6px;
-      margin-top: 10px;
-      width: 250px;}
-
-    .vqSubmitBtn {
-      font-size: 16px;
-      padding: 6px 12px;
-      margin-left: 8px;
-      cursor: pointer;}
-
-    .vqResponseText {
-      margin-top: 10px;
-      font-size: 16px;
-      font-weight: bold;}
+  #continueHint {
+    font-size: 13px;
+    color: #aaa;}
+  #progressText {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #555;
+    font-weight: bold;}
+  #prevBtn, #nextBtn {
+    font-size: 22px;
+    padding: 12px 16px;
+    cursor: pointer;
+    border-radius: 50%;
+    border: none;
+    background-color: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: transform 0.15s;}
+  #prevBtn:hover, #nextBtn:hover {
+    transform: scale(1.1);}
+  #speakBtn {
+    margin-top: 20px;
+    font-size: 15px;
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 20px;
+    border: none;
+    background-color: #2c3e50;
+    color: white;}
+  #speakBtn:hover {
+    background-color: #3d5a75;}
+  .vqInputBox {
+    font-size: 16px;
+    padding: 8px;
+    margin-top: 10px;
+    width: 260px;
+    border-radius: 6px;
+    border: 1px solid #ccc;}
+  .vqSubmitBtn {
+    font-size: 15px;
+    padding: 8px 14px;
+    margin-left: 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    border: none;
+    background-color: #2c3e50;
+    color: white;}
+  .vqResponseText {
+    margin-top: 10px;
+    font-size: 16px;
+    font-weight: bold;}
 </style>
 </head>
 <body>
-
 <div id="container">
     <button id="prevBtn">&#10094;</button>
     <span id="slideBox"></span>
     <button id="nextBtn">&#10095;</button>
 </div>
-
 <p id="progressText"></p>
-
-<button id="speakBtn">Play Audio</button>
-
+<button id="speakBtn">🔊 Replay Audio</button>
 <script src="script.js"></script>
 </body>
 </html>
