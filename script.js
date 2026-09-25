@@ -2,6 +2,7 @@ let slides = [];
 let currentIndex = 0;
 let currentParts = [];
 let partIndex = -1;
+
 function loadSlides() {
   fetch("https://llef-slide-app.onrender.com/api/slides")
     .then(function (response) {
@@ -13,32 +14,50 @@ function loadSlides() {
     })
     .catch(function (error) {
       console.log("Error loading slides:", error);
-      alert("Could not load slides from the server. Is the backend running?");});}
+      alert("Could not load slides from the server. Is the backend running?");
+    });
+}
+
 function getHeaderTitle(slide) {
   if (slide.title) {
-    return slide.title;}
+    return slide.title;
+  }
+
   if (slide.type === "vq") {
     for (let i = 0; i < slide.rows.length; i++) {
       if (slide.rows[i].wd) {
-        return slide.rows[i].wd;}} }
-  return "";}
+        return slide.rows[i].wd;
+      }
+    }
+  }
+
+  return "";
+}
+
 function buildPartsForSlide(slide) {
   const parts = [];
+
   if (slide.type === "vq") {
     for (let i = 0; i < slide.rows.length; i++) {
       const row = slide.rows[i];
+
       parts.push({
         kind: "text",
         vd: row.vd,
         studyMaterials: row.studyMaterials,
         time: Number(row.time),
         isQuestion: row.isQuestion,
-        answer: row.answer});
+        answer: row.answer
+      });
+
       if (row.multimedia) {
         parts.push({
           kind: "media",
           multimedia: row.multimedia,
-          time: 0});}}
+          time: 0
+        });
+      }
+    }
   } else {
     parts.push({
       kind: "text",
@@ -47,43 +66,69 @@ function buildPartsForSlide(slide) {
       studyMaterials: "",
       time: Number(slide.time),
       isQuestion: false,
-      answer: ""});
+      answer: ""
+    });
+
     if (slide.image) {
       parts.push({
         kind: "media",
         multimedia: slide.image,
-        time: 0});}}
-  return parts;}
+        time: 0
+      });
+    }
+  }
+
+  return parts;
+}
+
 function showSlide() {
   const slide = slides[currentIndex];
+
   document.getElementById("progressText").textContent =
     "Slide " + (currentIndex + 1) + " of " + slides.length;
+
   const headerTitle = getHeaderTitle(slide);
   const box = document.getElementById("slideBox");
-   box.innerHTML =
+
+  box.innerHTML =
     "<div class='slideHeader'>" + headerTitle + "</div>" +
     "<div class='slideBody' id='slideBodyContent'></div>" +
     "<div class='slideFooter' id='slideFooterContent'></div>";
 
   document.getElementById("slideBodyContent").addEventListener("click", revealNextPart);
+
   currentParts = buildPartsForSlide(slide);
-  partIndex = -1;}
+  partIndex = -1;
+}
+
 function revealNextPart() {
   if (partIndex >= currentParts.length - 1) {
-    return;}
+    return;
+  }
+
   partIndex = partIndex + 1;
   const part = currentParts[partIndex];
   const uniqueId = currentIndex + "_" + partIndex;
+
   const bodyContent = document.getElementById("slideBodyContent");
+
   if (partIndex === 0) {
-    bodyContent.innerHTML = "";}
+    bodyContent.innerHTML = "";
+  }
+
   let partHTML = "<div class='rowBlock'>";
 
   if (part.kind === "text") {
+    // ============================
+    // নতুন: প্রতিটা text লাইনে একটা নির্দিষ্ট id দেওয়া হচ্ছে,
+    // যাতে পরে এতে আলাদা করে click listener বসানো যায়
+    // ============================
+    const textId = "partText_" + uniqueId;
+
     if (part.simpleText) {
-      partHTML = partHTML + "<p>" + part.simpleText + "</p>";
+      partHTML = partHTML + "<p id='" + textId + "' class='partText'>" + part.simpleText + "</p>";
     } else {
-      partHTML = partHTML + "<p>" + part.vd + "</p>";
+      partHTML = partHTML + "<p id='" + textId + "' class='partText'>" + part.vd + "</p>";
     }
     if (part.studyMaterials) {
       partHTML = partHTML + "<p class='studyMaterials'>Study materials: " + part.studyMaterials + "</p>";
@@ -91,35 +136,59 @@ function revealNextPart() {
     if (part.isQuestion === true) {
       partHTML = partHTML + "<input type='text' class='vqInputBox' id='vqInput_" + uniqueId + "' placeholder='Type your answer'>";
       partHTML = partHTML + "<button class='vqSubmitBtn' id='vqSubmitBtn_" + uniqueId + "'>Submit</button>";
-      partHTML = partHTML + "<p class='vqResponseText' id='vqResponse_" + uniqueId + "'></p>";}}
+      partHTML = partHTML + "<p class='vqResponseText' id='vqResponse_" + uniqueId + "'></p>";
+    }
+  }
 
   if (part.kind === "media") {
-    partHTML = partHTML + "<img src='" + part.multimedia + "'>";}
+    partHTML = partHTML + "<img src='" + part.multimedia + "'>";
+  }
 
   partHTML = partHTML + "</div>";
 
   bodyContent.innerHTML = bodyContent.innerHTML + partHTML;
 
+  if (part.kind === "text") {
+    // ============================
+    // নতুন: এই লাইনে (<p>) আলাদা করে click listener বসানো হচ্ছে
+    // যাতে পরে এই লাইনে ক্লিক করলে ঠিক এই লাইনের audio-ই আবার বাজে
+    // ============================
+    const textId = "partText_" + uniqueId;
+    const textElement = document.getElementById(textId);
+    textElement.addEventListener("click", function (event) {
+      event.stopPropagation();
+      speakText(part.vd);
+    });
+  }
+
   if (part.kind === "text" && part.isQuestion === true) {
     const submitButton = document.getElementById("vqSubmitBtn_" + uniqueId);
     submitButton.addEventListener("click", function (event) {
       event.stopPropagation();
-      checkAnswer(uniqueId, part.answer);});
+      checkAnswer(uniqueId, part.answer);
+    });
     const inputBox = document.getElementById("vqInput_" + uniqueId);
     inputBox.addEventListener("click", function (event) {
-      event.stopPropagation();});}
+      event.stopPropagation();
+    });
+  }
 
   if (part.kind === "text") {
-    speakText(part.vd); }
+    speakText(part.vd);
+  }
 
   let totalTime = 0;
   for (let i = 0; i <= partIndex; i++) {
-    totalTime = totalTime + currentParts[i].time;}
+    totalTime = totalTime + currentParts[i].time;
+  }
 
   let footerText = "Time: " + totalTime + " min";
   if (partIndex < currentParts.length - 1) {
-    footerText = footerText + "  •  Click for more";}
-  document.getElementById("slideFooterContent").textContent = footerText;}
+    footerText = footerText + "  •  Click for more";
+  }
+  document.getElementById("slideFooterContent").textContent = footerText;
+}
+
 function checkAnswer(uniqueId, correctAnswer) {
   const inputBox = document.getElementById("vqInput_" + uniqueId);
   const responseText = document.getElementById("vqResponse_" + uniqueId);
@@ -127,7 +196,9 @@ function checkAnswer(uniqueId, correctAnswer) {
 
   if (studentAnswer === "") {
     alert("Please type an answer first.");
-    return;}
+    return;
+  }
+
   let isCorrect;
 
   if (studentAnswer.toLowerCase() === correctAnswer.toLowerCase()) {
@@ -137,9 +208,12 @@ function checkAnswer(uniqueId, correctAnswer) {
   } else {
     responseText.textContent = "Wrong. Correct answer: " + correctAnswer;
     responseText.style.color = "red";
-    isCorrect = false;}
+    isCorrect = false;
+  }
 
-  saveAnswerToBackend(uniqueId, studentAnswer, correctAnswer, isCorrect);}
+  saveAnswerToBackend(uniqueId, studentAnswer, correctAnswer, isCorrect);
+}
+
 function saveAnswerToBackend(uniqueId, studentAnswer, correctAnswer, isCorrect) {
   fetch("https://llef-slide-app.onrender.com/api/answers", {
     method: "POST",
@@ -150,7 +224,9 @@ function saveAnswerToBackend(uniqueId, studentAnswer, correctAnswer, isCorrect) 
       questionId: uniqueId,
       studentAnswer: studentAnswer,
       correctAnswer: correctAnswer,
-      isCorrect: isCorrect}) })
+      isCorrect: isCorrect
+    })
+  })
     .then(function (response) {
       return response.json();
     })
@@ -158,29 +234,49 @@ function saveAnswerToBackend(uniqueId, studentAnswer, correctAnswer, isCorrect) 
       console.log("Answer saved:", data);
     })
     .catch(function (error) {
-      console.log("Error saving answer:", error); });}
+      console.log("Error saving answer:", error);
+    });
+}
 
 function goNext() {
   const lastIndex = slides.length - 1;
 
   if (currentIndex < lastIndex) {
     currentIndex = currentIndex + 1;
-    showSlide();}}
+    showSlide();
+  }
+}
 
 function goPrev() {
   if (currentIndex > 0) {
     currentIndex = currentIndex - 1;
-    showSlide();}}
+    showSlide();
+  }
+}
+
 function speakText(text) {
   speechSynthesis.cancel();
   const speech = new SpeechSynthesisUtterance(text);
-  speechSynthesis.speak(speech);}
+  speechSynthesis.speak(speech);
+}
+
+// ============================
+// Replay Audio বাটন -- এখন পর্যন্ত দেখানো সব text একসাথে আবার পড়ে
+// ============================
 function playAudio() {
   if (partIndex < 0) {
-    return;}
-  const part = currentParts[partIndex];
-  if (part.kind === "text") {
-    speakText(part.vd);}}
+    return;
+  }
+
+  let textToSpeak = "";
+  for (let i = 0; i <= partIndex; i++) {
+    if (currentParts[i].kind === "text") {
+      textToSpeak = textToSpeak + currentParts[i].vd + ". ";
+    }
+  }
+  speakText(textToSpeak);
+}
+
 document.getElementById("nextBtn").addEventListener("click", goNext);
 document.getElementById("prevBtn").addEventListener("click", goPrev);
 document.getElementById("speakBtn").addEventListener("click", playAudio);
