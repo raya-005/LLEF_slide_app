@@ -1,10 +1,6 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 const Slide = require("./Slide");
-
-// ============================
-// এখন সব time value quotes ছাড়া (number), আগের মতো string না
-// ============================
 const slidesToInsert = [
   {
     type: "simple",
@@ -40,28 +36,16 @@ const slidesToInsert = [
         multimedia: "",
         studyMaterials: "",
         time: 0.01,
-        isQuestion: false
-      }
-    ]
-  }
-];
-
-// ============================
-// প্রথমে পুরনো সব data মুছে ফেলা, তারপর নতুন করে সঠিক type দিয়ে insert করা
-// ============================
+        isQuestion: false}]}];
 mongoose.connect(process.env.MONGODB_URI)
   .then(function () {
     console.log("Connected to MongoDB, clearing old data...");
-    return Slide.deleteMany({});
-  })
+    return Slide.deleteMany({});})
   .then(function () {
     console.log("Old data cleared. Inserting new data...");
-    return Slide.insertMany(slidesToInsert);
-  })
+    return Slide.insertMany(slidesToInsert);})
   .then(function () {
     console.log("Data inserted successfully with correct types!");
-    mongoose.connection.close();
-  })
+    mongoose.connection.close();})
   .catch(function (error) {
-    console.log("Error:", error);
-  });
+    console.log("Error:", error);});

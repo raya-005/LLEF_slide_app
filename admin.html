@@ -114,6 +114,35 @@
     color: #7a5c00;
   }
 
+  /* ============================
+     নতুন: ছবি বাছাই করার অংশ
+     ============================ */
+  .imagePicker {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px;
+    background-color: white;
+  }
+
+  .imagePicker img {
+    display: block;
+    max-width: 200px;
+    max-height: 150px;
+    margin-top: 10px;
+    border-radius: 6px;
+    border: 1px solid #eee;
+  }
+
+  .imagePicker button {
+    margin-top: 10px;
+  }
+
+  .imageStatus {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: #555;
+  }
+
   .slideItem {
     display: flex;
     justify-content: space-between;
@@ -271,8 +300,8 @@
       <label>VD (the text that will be read aloud, required)</label>
       <textarea id="s_vd"></textarea>
 
-      <label>Image file name (optional, e.g. circuit.jpg)</label>
-      <input type="text" id="s_image">
+      <label>Image (optional)</label>
+      <div id="s_imageBox"></div>
 
       <label>Time (minutes, required)</label>
       <input type="number" id="s_time" step="0.01" min="0">
