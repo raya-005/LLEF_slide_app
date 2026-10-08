@@ -1,5 +1,11 @@
 const API_URL = "https://llef-slide-app.onrender.com";
 
+// ============================
+// কোন slide edit করা হচ্ছে, তার id
+// null মানে এখন নতুন slide বানানো হচ্ছে
+// ============================
+let editingId = null;
+
 function showMessage(text, color) {
   const messageBox = document.getElementById("message");
   messageBox.textContent = text;
@@ -19,7 +25,7 @@ function toggleFields() {
     document.getElementById("simpleFields").style.display = "none";
     document.getElementById("vqFields").style.display = "block";
 
-    // প্রথমবার vq বেছে নিলে একটা খালি row নিজে থেকেই দেখানো
+    // কোনো row না থাকলে একটা খালি row নিজে থেকেই দেখানো
     if (document.getElementsByClassName("rowBox").length === 0) {
       addRow();
     }
@@ -28,8 +34,9 @@ function toggleFields() {
 
 // ============================
 // নতুন একটা row-এর form যোগ করা
+// rowData দিলে (edit-এর সময়) ঘরগুলো সেই data দিয়ে আগে থেকে ভরা থাকবে
 // ============================
-function addRow() {
+function addRow(rowData) {
   const container = document.getElementById("rowsContainer");
   const rowNumber = container.children.length + 1;
 
@@ -53,6 +60,17 @@ function addRow() {
     "<button type='button' class='danger removeRowBtn'>Remove this row</button>";
 
   container.appendChild(box);
+
+  // edit-এর সময় আগের data ঘরগুলোতে বসানো (.value দিয়ে, তাই লেখা কখনো HTML হিসেবে চলে না)
+  if (rowData) {
+    box.querySelector(".r_wd").value = rowData.wd || "";
+    box.querySelector(".r_vd").value = rowData.vd || "";
+    box.querySelector(".r_multimedia").value = rowData.multimedia || "";
+    box.querySelector(".r_study").value = rowData.studyMaterials || "";
+    box.querySelector(".r_time").value = rowData.time;
+    box.querySelector(".r_isQuestion").checked = rowData.isQuestion === true;
+    box.querySelector(".r_answer").value = rowData.answer || "";
+  }
 
   box.querySelector(".removeRowBtn").addEventListener("click", function () {
     box.remove();
@@ -110,7 +128,8 @@ function collectRows() {
 }
 
 // ============================
-// Slide save করা (backend-এ POST পাঠানো)
+// Slide save করা
+// নতুন হলে POST, edit চলাকালীন হলে PUT (একই slide বদলায়)
 // ============================
 function saveSlide() {
   const type = document.getElementById("slideType").value;
@@ -162,10 +181,18 @@ function saveSlide() {
     };
   }
 
+  const isEditing = editingId !== null;
+  const url = isEditing ? API_URL + "/api/slides/" + editingId : API_URL + "/api/slides";
+  const method = isEditing ? "PUT" : "POST";
+
+  // সার্ভার ঘুম থেকে জাগতে সময় নিলে দুইবার চাপা আটকাতে বাটন বন্ধ রাখা
+  const saveBtn = document.getElementById("saveBtn");
+  saveBtn.disabled = true;
+
   showMessage("Saving... (the server may take up to a minute to wake up)", "#555");
 
-  fetch(API_URL + "/api/slides", {
-    method: "POST",
+  fetch(url, {
+    method: method,
     headers: {
       "Content-Type": "application/json"
     },
@@ -180,26 +207,97 @@ function saveSlide() {
       });
     })
     .then(function () {
-      showMessage("Slide saved!", "green");
-      clearForm();
+      if (isEditing) {
+        exitEditMode();
+        showMessage("Slide updated!", "green");
+      } else {
+        clearForm();
+        showMessage("Slide saved!", "green");
+      }
       loadSlideList();
     })
     .catch(function (error) {
       showMessage("Error: " + error.message, "red");
+    })
+    .finally(function () {
+      saveBtn.disabled = false;
     });
 }
 
-function clearForm() {
+// ============================
+// ফর্মের সব ঘর খালি করা (কোনো row যোগ না করে)
+// ============================
+function resetFields() {
   document.getElementById("title").value = "";
   document.getElementById("s_text").value = "";
   document.getElementById("s_vd").value = "";
   document.getElementById("s_image").value = "";
   document.getElementById("s_time").value = "";
   document.getElementById("rowsContainer").innerHTML = "";
+}
+
+function clearForm() {
+  resetFields();
 
   if (document.getElementById("slideType").value === "vq") {
     addRow();
   }
+}
+
+// ============================
+// নতুন: কোনো slide-এর Edit বাটন চাপলে ফর্মে তার data ভরে দেওয়া
+// ============================
+function startEdit(slide) {
+  editingId = slide._id;
+
+  const type = slide.type === "vq" ? "vq" : "simple";
+
+  resetFields();
+  document.getElementById("slideType").value = type;
+  toggleFields();
+
+  document.getElementById("title").value = slide.title || "";
+
+  if (type === "simple") {
+    document.getElementById("s_text").value = slide.text || "";
+    document.getElementById("s_vd").value = slide.vd || "";
+    document.getElementById("s_image").value = slide.image || "";
+    document.getElementById("s_time").value = slide.time;
+  } else {
+    // toggleFields যে খালি row যোগ করেছে সেটা মুছে, আসল row-গুলো ভরা অবস্থায় বসানো
+    document.getElementById("rowsContainer").innerHTML = "";
+    for (let i = 0; i < slide.rows.length; i++) {
+      addRow(slide.rows[i]);
+    }
+  }
+
+  const banner = document.getElementById("editBanner");
+  banner.textContent = "Editing: " + getSlideLabel(slide);
+  banner.style.display = "block";
+
+  document.getElementById("saveBtn").textContent = "Update slide";
+  document.getElementById("cancelEditBtn").style.display = "inline-block";
+
+  showMessage("", "");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// ============================
+// নতুন: Edit অবস্থা থেকে বের হয়ে আবার নতুন slide বানানোর অবস্থায় ফেরা
+// ============================
+function exitEditMode() {
+  editingId = null;
+
+  document.getElementById("editBanner").style.display = "none";
+  document.getElementById("saveBtn").textContent = "Save slide";
+  document.getElementById("cancelEditBtn").style.display = "none";
+
+  clearForm();
+}
+
+function cancelEdit() {
+  exitEditMode();
+  showMessage("Edit cancelled.", "#555");
 }
 
 // ============================
@@ -354,7 +452,8 @@ function clearPreview() {
 }
 
 // ============================
-// এখন পর্যন্ত থাকা সব slide দেখানো; নামে click করলে preview, সাথে Delete বাটন
+// এখন পর্যন্ত থাকা সব slide দেখানো
+// নামে click করলে preview, সাথে Edit আর Delete বাটন
 // ============================
 function loadSlideList() {
   const listBox = document.getElementById("slideList");
@@ -385,6 +484,13 @@ function loadSlideList() {
           showPreview(slide, item);
         });
 
+        const editBtn = document.createElement("button");
+        editBtn.className = "secondary small";
+        editBtn.textContent = "Edit";
+        editBtn.addEventListener("click", function () {
+          startEdit(slide);
+        });
+
         const deleteBtn = document.createElement("button");
         deleteBtn.className = "danger";
         deleteBtn.textContent = "Delete";
@@ -392,8 +498,13 @@ function loadSlideList() {
           deleteSlide(slide._id, getSlideLabel(slide));
         });
 
+        const actions = document.createElement("div");
+        actions.className = "slideActions";
+        actions.appendChild(editBtn);
+        actions.appendChild(deleteBtn);
+
         item.appendChild(label);
-        item.appendChild(deleteBtn);
+        item.appendChild(actions);
         listBox.appendChild(item);
       }
     })
@@ -415,6 +526,10 @@ function deleteSlide(id, name) {
       return response.json();
     })
     .then(function () {
+      // যে slide edit করছিলাম সেটাই মুছে গেলে edit অবস্থা বন্ধ করা
+      if (id === editingId) {
+        exitEditMode();
+      }
       showMessage("Slide deleted.", "green");
       loadSlideList();
     })
@@ -424,8 +539,14 @@ function deleteSlide(id, name) {
 }
 
 document.getElementById("slideType").addEventListener("change", toggleFields);
-document.getElementById("addRowBtn").addEventListener("click", addRow);
+
+// addRow সরাসরি দিলে click event-টা rowData হিসেবে ঢুকে যেত, তাই ফাঁকা function দিয়ে ডাকা
+document.getElementById("addRowBtn").addEventListener("click", function () {
+  addRow();
+});
+
 document.getElementById("saveBtn").addEventListener("click", saveSlide);
+document.getElementById("cancelEditBtn").addEventListener("click", cancelEdit);
 
 toggleFields();
 loadSlideList();

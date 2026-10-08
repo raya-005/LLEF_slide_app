@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Admin - Add Slide</title>
+<title>Admin - Slides</title>
 <style>
   body {
     font-family: Georgia, serif;
@@ -79,14 +79,39 @@
     margin-top: 15px;
   }
 
+  button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
   button.secondary {
     background-color: #7f8c8d;
+  }
+
+  button.small {
+    padding: 6px 12px;
+    font-size: 13px;
   }
 
   button.danger {
     background-color: #c0392b;
     padding: 6px 12px;
     font-size: 13px;
+  }
+
+  #cancelEditBtn {
+    margin-left: 8px;
+  }
+
+  #editBanner {
+    display: none;
+    background-color: #fff3cd;
+    border: 1px solid #f0d98c;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: #7a5c00;
   }
 
   .slideItem {
@@ -100,6 +125,11 @@
 
   .slideItem button {
     margin-top: 0;
+  }
+
+  .slideActions {
+    display: flex;
+    gap: 8px;
   }
 
   .slideItem.selected {
@@ -220,9 +250,11 @@
 <body>
 
 <div class="wrap">
-  <h1>Admin: Add Slide</h1>
+  <h1>Admin: Slides</h1>
 
   <div class="card">
+    <div id="editBanner"></div>
+
     <label>Slide type</label>
     <select id="slideType">
       <option value="simple">Simple slide (title + text)</option>
@@ -252,12 +284,13 @@
     </div>
 
     <button type="button" id="saveBtn">Save slide</button>
+    <button type="button" class="secondary" id="cancelEditBtn" style="display: none;">Cancel edit</button>
     <p id="message"></p>
   </div>
 
   <div class="card">
     <h2>Existing slides</h2>
-    <p class="previewHint">Click a slide's name to preview it below.</p>
+    <p class="previewHint">Click a slide's name to preview it below. Use Edit to change a slide.</p>
     <div id="slideList">Loading...</div>
   </div>
 
