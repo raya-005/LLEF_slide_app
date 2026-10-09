@@ -5,7 +5,7 @@ const rowSchema = new mongoose.Schema({
     default: ""},
   vd: {
     type: String,
-    required: true},
+    default: ""},
   multimedia: {
     type: String,
     default: ""},
@@ -20,7 +20,7 @@ const rowSchema = new mongoose.Schema({
     default: false},
   answer: {
     type: String,
-    default: "" }});
+    default: ""}});
 const slideSchema = new mongoose.Schema({
   type: {
     type: String,
