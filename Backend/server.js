@@ -11,17 +11,20 @@ app.use((req, res, next) => {
   res.header("Access-Control-Allow-Headers", "Content-Type");
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-  next();});
+    return res.sendStatus(200);}
+  next();
+});
 app.use(express.json({ limit: "10mb" }));
+
 mongoose.connect(process.env.MONGODB_URI)
   .then(function () {
-    console.log("Connected to MongoDB!");})
+    console.log("Connected to MongoDB!");
+  })
   .catch(function (error) {
     console.log("MongoDB connection error:", error);});
 function isBlank(value) {
-  return value === undefined || value === null || String(value).trim() === "";}
+  return value === undefined || value === null || String(value).trim() === "";
+}
 const MAX_IMAGE_LENGTH = 1500000;
 
 function isImageTooBig(value) {
@@ -49,6 +52,7 @@ function buildSlideData(body) {
   if (!Array.isArray(body.rows) || body.rows.length === 0) {
     return { error: "A vq slide needs at least one row." };}
   const rows = [];
+
   for (let i = 0; i < body.rows.length; i++) {
     const row = body.rows[i];
     const rowName = "Row " + (i + 1) + ": ";
@@ -59,7 +63,8 @@ function buildSlideData(body) {
       return { error: rowName + "Time must be a number." };
     }
     if (isImageTooBig(row.multimedia)) {
-      return { error: rowName + "the image is too large. Please choose a smaller image." };}
+      return { error: rowName + "the image is too large. Please choose a smaller image." };
+    }
 
     const isQuestion = row.isQuestion === true || row.isQuestion === "true";
     if (isQuestion && isBlank(row.vd)) {
@@ -86,6 +91,7 @@ function buildSlideData(body) {
       image: "",
       time: 0,
       rows: rows}};}
+
 app.get("/api/slides", async function (req, res) {
   try {
     const slidesFromDB = await Slide.find();
@@ -98,13 +104,15 @@ app.post("/api/slides", async function (req, res) {
     const result = buildSlideData(req.body);
 
     if (result.error) {
-      return res.status(400).json({ message: result.error });}
+      return res.status(400).json({ message: result.error });
+    }
 
     const createdSlide = await Slide.create(result.data);
     res.status(201).json(createdSlide);
   } catch (error) {
     if (error.name === "ValidationError") {
-      return res.status(400).json({ message: error.message });}
+      return res.status(400).json({ message: error.message });
+    }
     console.log("Error creating slide:", error);
     res.status(500).json({ message: "Error creating slide" });}});
 app.put("/api/slides/:id", async function (req, res) {
@@ -112,7 +120,8 @@ app.put("/api/slides/:id", async function (req, res) {
     const result = buildSlideData(req.body);
 
     if (result.error) {
-      return res.status(400).json({ message: result.error });}
+      return res.status(400).json({ message: result.error });
+    }
 
     const slide = await Slide.findById(req.params.id);
 
@@ -131,23 +140,26 @@ app.put("/api/slides/:id", async function (req, res) {
     }
     console.log("Error updating slide:", error);
     res.status(500).json({ message: "Error updating slide" });}});
-
 app.delete("/api/slides/:id", async function (req, res) {
   try {
     const deletedSlide = await Slide.findByIdAndDelete(req.params.id);
 
     if (!deletedSlide) {
-      return res.status(404).json({ message: "Slide not found" });}
+      return res.status(404).json({ message: "Slide not found" });
+    }
 
     res.json({ message: "Slide deleted successfully" });
   } catch (error) {
-    res.status(400).json({ message: "Invalid slide id" }); }});
+    res.status(400).json({ message: "Invalid slide id" });
+  }});
+
 app.post("/api/answers", async function (req, res) {
   try {
     const body = req.body;
 
     if (isBlank(body.studentAnswer)) {
-      return res.status(400).json({ message: "The answer is empty." });}
+      return res.status(400).json({ message: "The answer is empty." });
+    }
 
     const savedAnswer = await Answer.create({
       slideId: String(body.slideId || ""),
@@ -162,7 +174,9 @@ app.post("/api/answers", async function (req, res) {
     res.json({ message: "Answer saved successfully!" });
   } catch (error) {
     console.log("Error saving answer:", error);
-    res.status(500).json({ message: "Error saving answer" });}});
+    res.status(500).json({ message: "Error saving answer" });
+  }
+});
 app.get("/api/answers", async function (req, res) {
   try {
     const answers = await Answer.find().sort({ createdAt: -1 });
@@ -170,7 +184,8 @@ app.get("/api/answers", async function (req, res) {
   } catch (error) {
     console.log("Error fetching answers:", error);
     res.status(500).json({ message: "Error fetching answers" });
-  }});
+  }
+});
 
 app.listen(PORT, () => {
   console.log("Server is running on http://localhost:" + PORT);});
