@@ -5,20 +5,29 @@ let partIndex = -1;
 const SHOW_ONLY_CURRENT_ROW = true;
 function escapeHtml(text) {
   if (text === undefined || text === null) {
-    return "";}
+    return "";
+  }
 
   return String(text)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");}
+    .replace(/'/g, "&#39;");
+}
+function normalizeAnswer(text) {
+  return String(text || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
 function loadSlides() {
   document.getElementById("progressText").textContent = "Loading...";
   document.getElementById("slideBox").innerHTML =
     "<div class='slideHeader'></div>" +
     "<div class='slideBody'><p>Loading slides... The server may take up to a minute to wake up.</p></div>" +
     "<div class='slideFooter'></div>";
+
   fetch("https://llef-slide-app.onrender.com/api/slides")
     .then(function (response) {
       return response.json();
@@ -33,18 +42,25 @@ function loadSlides() {
       document.getElementById("slideBox").innerHTML =
         "<div class='slideHeader'></div>" +
         "<div class='slideBody'><p>Could not load slides from the server. Please refresh the page and try again.</p></div>" +
-        "<div class='slideFooter'></div>";});}
+        "<div class='slideFooter'></div>";
+    });
+}
 
 function getHeaderTitle(slide) {
   if (slide.title) {
-    return slide.title;}
+    return slide.title;
+  }
 
   if (slide.type === "vq") {
     for (let i = 0; i < slide.rows.length; i++) {
       if (slide.rows[i].wd) {
-        return slide.rows[i].wd;}}}
+        return slide.rows[i].wd;
+      }
+    }
+  }
 
-  return "";}
+  return "";
+}
 function buildPartsForSlide(slide) {
   const parts = [];
 
@@ -62,7 +78,9 @@ function buildPartsForSlide(slide) {
           studyMaterials: row.studyMaterials,
           time: Number(row.time),
           isQuestion: row.isQuestion,
-          answer: row.answer});}
+          answer: row.answer
+        });
+      }
 
       if (row.multimedia) {
         parts.push({
@@ -70,8 +88,10 @@ function buildPartsForSlide(slide) {
           startsRow: !hasText,
           multimedia: row.multimedia,
           time: hasText ? 0 : Number(row.time)
-        });}}
-} else {
+        });
+      }
+    }
+  } else {
     const hasText = Boolean(slide.text) || Boolean(slide.vd);
 
     if (hasText) {
@@ -83,19 +103,19 @@ function buildPartsForSlide(slide) {
         studyMaterials: "",
         time: Number(slide.time),
         isQuestion: false,
-        answer: "" });}
+        answer: ""});}
 
     if (slide.image) {
       parts.push({
         kind: "media",
         startsRow: !hasText,
         multimedia: slide.image,
-        time: hasText ? 0 : Number(slide.time)
-      });}}
+        time: hasText ? 0 : Number(slide.time)});}}
 
   return parts;}
 function getSpokenText(part) {
-  return part.vd || part.simpleText || "";}
+  return part.vd || part.simpleText || "";
+}
 
 function showSlide() {
   const slide = slides[currentIndex];
@@ -109,34 +129,38 @@ function showSlide() {
 
   document.getElementById("progressText").textContent =
     "Slide " + (currentIndex + 1) + " of " + slides.length;
+
   const headerTitle = getHeaderTitle(slide);
   const box = document.getElementById("slideBox");
   box.innerHTML =
     "<div class='slideHeader'>" + escapeHtml(headerTitle) + "</div>" +
     "<div class='slideBody' id='slideBodyContent'></div>" +
     "<div class='slideFooter' id='slideFooterContent'></div>";
-
   document.getElementById("slideBodyContent").addEventListener("click", revealNextPart);
   currentParts = buildPartsForSlide(slide);
   partIndex = -1;}
 function revealNextPart() {
   if (partIndex >= currentParts.length - 1) {
-    return;}
+    return;
+  }
 
   partIndex = partIndex + 1;
+
   const part = currentParts[partIndex];
   const uniqueId = currentIndex + "_" + partIndex;
   const bodyContent = document.getElementById("slideBodyContent");
   if (partIndex === 0 || (SHOW_ONLY_CURRENT_ROW && part.startsRow)) {
-    bodyContent.innerHTML = "";}
+    bodyContent.innerHTML = "";
+  }
 
   let partHTML = "<div class='rowBlock'>";
+
   if (part.kind === "text") {
-    // Text (simple slide-এর) আগে
     if (part.simpleText) {
       partHTML = partHTML + "<p class='partText'>" + escapeHtml(part.simpleText) + "</p>";}
     if (part.vd && part.vd !== part.simpleText) {
-      partHTML = partHTML + "<p class='partText'>" + escapeHtml(part.vd) + "</p>";}
+      partHTML = partHTML + "<p class='partText'>" + escapeHtml(part.vd) + "</p>";
+    }
 
     if (part.studyMaterials) {
       partHTML = partHTML + "<p class='studyMaterials'>Study materials: " + escapeHtml(part.studyMaterials) + "</p>";}
@@ -144,9 +168,7 @@ function revealNextPart() {
     if (part.isQuestion === true) {
       partHTML = partHTML + "<input type='text' class='vqInputBox' id='vqInput_" + uniqueId + "' placeholder='Type your answer'>";
       partHTML = partHTML + "<button class='vqSubmitBtn' id='vqSubmitBtn_" + uniqueId + "'>Submit</button>";
-      partHTML = partHTML + "<p class='vqResponseText' id='vqResponse_" + uniqueId + "'></p>";
-    }
-  }
+      partHTML = partHTML + "<p class='vqResponseText' id='vqResponse_" + uniqueId + "'></p>";}}
 
   if (part.kind === "media") {
     partHTML = partHTML + "<img src='" + escapeHtml(part.multimedia) + "' style='max-height:320px; object-fit:contain;'>";
@@ -166,29 +188,33 @@ function revealNextPart() {
         speakText(spoken);});}
 
     if (spoken !== "") {
-      speakText(spoken);
-    }}
+      speakText(spoken);}}
 
   if (part.kind === "text" && part.isQuestion === true) {
     const submitButton = document.getElementById("vqSubmitBtn_" + uniqueId);
+
     submitButton.addEventListener("click", function (event) {
       event.stopPropagation();
       checkAnswer(uniqueId, part.answer);});
 
     const inputBox = document.getElementById("vqInput_" + uniqueId);
     inputBox.addEventListener("click", function (event) {
-      event.stopPropagation();
-    });}
+      event.stopPropagation();});}
   let totalTime = 0;
 
   for (let i = 0; i <= partIndex; i++) {
     totalTime = totalTime + currentParts[i].time;
   }
   totalTime = Math.round(totalTime * 100) / 100;
+
   let footerText = "Time: " + totalTime + " min";
+
   if (partIndex < currentParts.length - 1) {
-    footerText = footerText + "  •  Click for more";}
-  document.getElementById("slideFooterContent").textContent = footerText;}
+    footerText = footerText + "  •  Click for more";
+  }
+
+  document.getElementById("slideFooterContent").textContent = footerText;
+}
 function checkAnswer(uniqueId, correctAnswer) {
   const inputBox = document.getElementById("vqInput_" + uniqueId);
   const responseText = document.getElementById("vqResponse_" + uniqueId);
@@ -202,7 +228,7 @@ function checkAnswer(uniqueId, correctAnswer) {
 
   let isCorrect;
 
-  if (studentAnswer.toLowerCase() === cleanCorrectAnswer.toLowerCase()) {
+  if (normalizeAnswer(studentAnswer) === normalizeAnswer(cleanCorrectAnswer)) {
     responseText.textContent = "Correct!";
     responseText.style.color = "green";
     isCorrect = true;
@@ -227,9 +253,7 @@ function saveAnswerToBackend(uniqueId, studentAnswer, correctAnswer, isCorrect) 
       questionId: uniqueId,
       studentAnswer: studentAnswer,
       correctAnswer: correctAnswer,
-      isCorrect: isCorrect
-    })
-  })
+      isCorrect: isCorrect})})
     .then(function (response) {
       return response.json();
     })
@@ -237,54 +261,36 @@ function saveAnswerToBackend(uniqueId, studentAnswer, correctAnswer, isCorrect) 
       console.log("Answer saved:", data);
     })
     .catch(function (error) {
-      console.log("Error saving answer:", error);
-    });
-}
+      console.log("Error saving answer:", error);});}
 
 function goNext() {
   const lastIndex = slides.length - 1;
 
   if (currentIndex < lastIndex) {
     currentIndex = currentIndex + 1;
-    showSlide();
-  }
-}
+    showSlide();}}
 
 function goPrev() {
   if (currentIndex > 0) {
     currentIndex = currentIndex - 1;
-    showSlide();
-  }
-}
-
+    showSlide();}}
 function speakText(text) {
   speechSynthesis.cancel();
 
   const speech = new SpeechSynthesisUtterance(text);
-  speechSynthesis.speak(speech);
-}
-
+  speechSynthesis.speak(speech);}
 function playAudio() {
   if (partIndex < 0) {
-    return;
-  }
-
+    return;}
   let textToSpeak = "";
-
   for (let i = 0; i <= partIndex; i++) {
     if (currentParts[i].kind === "text") {
       const spoken = getSpokenText(currentParts[i]);
-
       if (spoken !== "") {
-        textToSpeak = textToSpeak + spoken + ". ";
-      }
-    }
-  }
+        textToSpeak = textToSpeak + spoken + ". ";}}}
 
   if (textToSpeak !== "") {
-    speakText(textToSpeak);
-  }
-}
+    speakText(textToSpeak);}}
 
 document.getElementById("nextBtn").addEventListener("click", goNext);
 document.getElementById("prevBtn").addEventListener("click", goPrev);
