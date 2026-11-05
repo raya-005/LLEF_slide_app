@@ -9,6 +9,12 @@ let editingId = null;
 // simple slide-এর ছবি বাছাইয়ের অংশ এই variable-এ থাকে
 let simplePicker = null;
 
+// সব slide এখানে জমা থাকে, যাতে উত্তরের তালিকায় slide-এর নাম দেখানো যায়
+let allSlides = [];
+
+// নতুন: সব উত্তর এখানে জমা থাকে, যাতে CSV বানানোর সময় আবার server-কে জিজ্ঞেস করতে না হয়
+let allAnswers = [];
+
 function showMessage(text, color) {
   const messageBox = document.getElementById("message");
   messageBox.textContent = text;
@@ -638,6 +644,207 @@ function clearPreview() {
 }
 
 // ============================
+// উত্তরের slideId দেখে slide-এর নাম বের করা
+// ============================
+function findSlideLabelById(slideId) {
+  if (!slideId) {
+    return "-";
+  }
+
+  for (let i = 0; i < allSlides.length; i++) {
+    if (allSlides[i]._id === slideId) {
+      return getSlideLabel(allSlides[i]);
+    }
+  }
+
+  // slide পরে মুছে ফেলা হয়েছে
+  return "(deleted slide)";
+}
+
+// ============================
+// একটা ঘর (<td>) বানিয়ে row-তে যোগ করা
+// textContent ব্যবহার করা হয়েছে, তাই ছাত্রের লেখা কখনো HTML হিসেবে চলবে না
+// ============================
+function addAnswerCell(row, text, className) {
+  const cell = document.createElement("td");
+  cell.textContent = text;
+
+  if (className) {
+    cell.className = className;
+  }
+
+  row.appendChild(cell);
+}
+
+// ============================
+// ছাত্রদের সব উত্তর server থেকে এনে টেবিলে দেখানো (নতুনগুলো আগে)
+// ============================
+function loadAnswers() {
+  const box = document.getElementById("answersBox");
+  const summary = document.getElementById("answersSummary");
+
+  fetch(API_URL + "/api/answers")
+    .then(function (response) {
+      return response.json();
+    })
+    .then(function (answers) {
+      box.innerHTML = "";
+
+      if (!Array.isArray(answers)) {
+        throw new Error("Unexpected reply from the server");
+      }
+
+      // নতুন: CSV-র জন্য উত্তরগুলো মনে রাখা
+      allAnswers = answers;
+
+      if (answers.length === 0) {
+        summary.textContent = "";
+        box.textContent = "No answers yet.";
+        return;
+      }
+
+      let correctCount = 0;
+
+      for (let i = 0; i < answers.length; i++) {
+        if (answers[i].isCorrect === true) {
+          correctCount = correctCount + 1;
+        }
+      }
+
+      summary.textContent =
+        "Total answers: " + answers.length + "  •  Correct: " + correctCount +
+        "  •  Wrong: " + (answers.length - correctCount);
+
+      const table = document.createElement("table");
+      table.className = "answersTable";
+
+      const headRow = document.createElement("tr");
+      const headings = ["Time", "Slide", "Student's answer", "Correct answer", "Result"];
+
+      for (let i = 0; i < headings.length; i++) {
+        const th = document.createElement("th");
+        th.textContent = headings[i];
+        headRow.appendChild(th);
+      }
+
+      const thead = document.createElement("thead");
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+
+      for (let i = 0; i < answers.length; i++) {
+        const answer = answers[i];
+        const row = document.createElement("tr");
+
+        let timeText = "-";
+        const date = new Date(answer.createdAt);
+
+        if (!Number.isNaN(date.getTime())) {
+          timeText = date.toLocaleString();
+        }
+
+        addAnswerCell(row, timeText);
+        addAnswerCell(row, findSlideLabelById(answer.slideId));
+        addAnswerCell(row, answer.studentAnswer);
+        addAnswerCell(row, answer.correctAnswer);
+
+        if (answer.isCorrect === true) {
+          addAnswerCell(row, "Correct", "answerCorrect");
+        } else {
+          addAnswerCell(row, "Wrong", "answerWrong");
+        }
+
+        tbody.appendChild(row);
+      }
+
+      table.appendChild(tbody);
+      box.appendChild(table);
+    })
+    .catch(function () {
+      summary.textContent = "";
+      box.textContent = "Could not load the answers. Is the backend running?";
+    });
+}
+
+// ============================
+// নতুন: CSV-র একটা ঘরের লেখাকে নিরাপদ করা
+// ১) কমা, উদ্ধৃতি চিহ্ন বা নতুন লাইন থাকলে ঘরটা " " দিয়ে ঘিরে দেওয়া (ভেতরের " হয় "")
+// ২) = + - @ দিয়ে শুরু হলে সামনে ' বসানো, যাতে Excel লেখাটাকে সূত্র (formula) হিসেবে না চালায়
+//    (ছাত্র ইচ্ছে করে এমন লেখা দিলে ফাইল খুলে ক্ষতি হতে পারত)
+// ============================
+function csvCell(value) {
+  let text = String(value === undefined || value === null ? "" : value);
+
+  if (/^[=+\-@\t\r]/.test(text)) {
+    text = "'" + text;
+  }
+
+  if (/[",\r\n]/.test(text)) {
+    text = "\"" + text.replace(/"/g, "\"\"") + "\"";
+  }
+
+  return text;
+}
+
+// ============================
+// নতুন: সব উত্তর CSV ফাইল বানিয়ে download করানো
+// কলাম: Time, Slide, Student's answer, Correct answer, Result
+// ============================
+function downloadAnswersCsv() {
+  if (allAnswers.length === 0) {
+    alert("There are no answers to download yet.");
+    return;
+  }
+
+  const lines = [];
+
+  lines.push(["Time", "Slide", "Student's answer", "Correct answer", "Result"].map(csvCell).join(","));
+
+  for (let i = 0; i < allAnswers.length; i++) {
+    const answer = allAnswers[i];
+
+    let timeText = "";
+    const date = new Date(answer.createdAt);
+
+    if (!Number.isNaN(date.getTime())) {
+      timeText = date.toLocaleString();
+    }
+
+    const cells = [
+      timeText,
+      findSlideLabelById(answer.slideId),
+      answer.studentAnswer,
+      answer.correctAnswer,
+      answer.isCorrect === true ? "Correct" : "Wrong"
+    ];
+
+    lines.push(cells.map(csvCell).join(","));
+  }
+
+  // শুরুর \uFEFF থাকলে Excel বাংলা বা অন্য ভাষার লেখা ঠিকভাবে পড়ে
+  const csvText = "\uFEFF" + lines.join("\r\n");
+
+  const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  // ফাইলের নামে আজকের তারিখ, যেমন student-answers-2026-11-05.csv
+  const today = new Date();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+  const fileName = "student-answers-" + today.getFullYear() + "-" + month + "-" + day + ".csv";
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  URL.revokeObjectURL(url);
+}
+
+// ============================
 // এখন পর্যন্ত থাকা সব slide দেখানো
 // নামে click করলে preview, সাথে Edit আর Delete বাটন
 // ============================
@@ -651,6 +858,10 @@ function loadSlideList() {
     .then(function (slides) {
       listBox.innerHTML = "";
       clearPreview();
+
+      // slide-এর তালিকা মনে রাখা, তারপর উত্তরের তালিকা (slide-এর নামসহ) নতুন করে আনা
+      allSlides = slides;
+      loadAnswers();
 
       if (slides.length === 0) {
         listBox.textContent = "No slides yet.";
@@ -700,8 +911,8 @@ function loadSlideList() {
 }
 
 // ============================
-// বদল: slide মুছে ফেলা
-// ব্যর্থ হলে এখন আসল কারণ (server-এর বার্তা বা status) পর্দায় দেখায়
+// slide মুছে ফেলা
+// ব্যর্থ হলে আসল কারণ (server-এর বার্তা বা status) পর্দায় দেখায়
 // ============================
 function deleteSlide(id, name) {
   const sure = confirm("Delete the slide \"" + name + "\"?");
@@ -762,6 +973,12 @@ document.getElementById("addRowBtn").addEventListener("click", function () {
 
 document.getElementById("saveBtn").addEventListener("click", saveSlide);
 document.getElementById("cancelEditBtn").addEventListener("click", cancelEdit);
+
+// উত্তরের তালিকা নতুন করে আনার বাটন
+document.getElementById("refreshAnswersBtn").addEventListener("click", loadAnswers);
+
+// নতুন: CSV download বাটন
+document.getElementById("downloadCsvBtn").addEventListener("click", downloadAnswersCsv);
 
 // পাতা খোলার সময় simple slide-এর ছবি বাছাই অংশ বসানো
 mountSimplePicker("");

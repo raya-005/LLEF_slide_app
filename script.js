@@ -19,13 +19,14 @@ function loadSlides() {
     "<div class='slideHeader'></div>" +
     "<div class='slideBody'><p>Loading slides... The server may take up to a minute to wake up.</p></div>" +
     "<div class='slideFooter'></div>";
-
   fetch("https://llef-slide-app.onrender.com/api/slides")
     .then(function (response) {
-      return response.json();})
+      return response.json();
+    })
     .then(function (data) {
       slides = data;
-      showSlide();})
+      showSlide();
+    })
     .catch(function (error) {
       console.log("Error loading slides:", error);
       document.getElementById("progressText").textContent = "Error";
@@ -51,6 +52,7 @@ function buildPartsForSlide(slide) {
     for (let i = 0; i < slide.rows.length; i++) {
       const row = slide.rows[i];
       const hasText = Boolean(row.vd) || Boolean(row.studyMaterials) || row.isQuestion === true;
+
       if (hasText) {
         parts.push({
           kind: "text",
@@ -60,8 +62,7 @@ function buildPartsForSlide(slide) {
           studyMaterials: row.studyMaterials,
           time: Number(row.time),
           isQuestion: row.isQuestion,
-          answer: row.answer
-        });}
+          answer: row.answer});}
 
       if (row.multimedia) {
         parts.push({
@@ -70,7 +71,7 @@ function buildPartsForSlide(slide) {
           multimedia: row.multimedia,
           time: hasText ? 0 : Number(row.time)
         });}}
-  } else {
+} else {
     const hasText = Boolean(slide.text) || Boolean(slide.vd);
 
     if (hasText) {
@@ -82,14 +83,15 @@ function buildPartsForSlide(slide) {
         studyMaterials: "",
         time: Number(slide.time),
         isQuestion: false,
-        answer: ""});}
+        answer: "" });}
 
     if (slide.image) {
       parts.push({
         kind: "media",
         startsRow: !hasText,
         multimedia: slide.image,
-        time: hasText ? 0 : Number(slide.time)});}}
+        time: hasText ? 0 : Number(slide.time)
+      });}}
 
   return parts;}
 function getSpokenText(part) {
@@ -113,10 +115,10 @@ function showSlide() {
     "<div class='slideHeader'>" + escapeHtml(headerTitle) + "</div>" +
     "<div class='slideBody' id='slideBodyContent'></div>" +
     "<div class='slideFooter' id='slideFooterContent'></div>";
+
   document.getElementById("slideBodyContent").addEventListener("click", revealNextPart);
   currentParts = buildPartsForSlide(slide);
   partIndex = -1;}
-
 function revealNextPart() {
   if (partIndex >= currentParts.length - 1) {
     return;}
@@ -130,23 +132,26 @@ function revealNextPart() {
 
   let partHTML = "<div class='rowBlock'>";
   if (part.kind === "text") {
+    // Text (simple slide-এর) আগে
     if (part.simpleText) {
       partHTML = partHTML + "<p class='partText'>" + escapeHtml(part.simpleText) + "</p>";}
-
     if (part.vd && part.vd !== part.simpleText) {
       partHTML = partHTML + "<p class='partText'>" + escapeHtml(part.vd) + "</p>";}
 
     if (part.studyMaterials) {
-      partHTML = partHTML + "<p class='studyMaterials'>Study materials: " + escapeHtml(part.studyMaterials) + "</p>";
-    }
+      partHTML = partHTML + "<p class='studyMaterials'>Study materials: " + escapeHtml(part.studyMaterials) + "</p>";}
+
     if (part.isQuestion === true) {
       partHTML = partHTML + "<input type='text' class='vqInputBox' id='vqInput_" + uniqueId + "' placeholder='Type your answer'>";
       partHTML = partHTML + "<button class='vqSubmitBtn' id='vqSubmitBtn_" + uniqueId + "'>Submit</button>";
       partHTML = partHTML + "<p class='vqResponseText' id='vqResponse_" + uniqueId + "'></p>";
-    }}
+    }
+  }
+
   if (part.kind === "media") {
     partHTML = partHTML + "<img src='" + escapeHtml(part.multimedia) + "' style='max-height:320px; object-fit:contain;'>";
   }
+
   partHTML = partHTML + "</div>";
   bodyContent.insertAdjacentHTML("beforeend", partHTML);
   const newBlock = bodyContent.lastElementChild;
@@ -161,7 +166,9 @@ function revealNextPart() {
         speakText(spoken);});}
 
     if (spoken !== "") {
-      speakText(spoken);}}
+      speakText(spoken);
+    }}
+
   if (part.kind === "text" && part.isQuestion === true) {
     const submitButton = document.getElementById("vqSubmitBtn_" + uniqueId);
     submitButton.addEventListener("click", function (event) {
@@ -170,48 +177,53 @@ function revealNextPart() {
 
     const inputBox = document.getElementById("vqInput_" + uniqueId);
     inputBox.addEventListener("click", function (event) {
-      event.stopPropagation();});}
+      event.stopPropagation();
+    });}
   let totalTime = 0;
 
   for (let i = 0; i <= partIndex; i++) {
-    totalTime = totalTime + currentParts[i].time;}
-  totalTime = Math.round(totalTime * 100) / 100;
-
-  let footerText = "Time: " + totalTime + " min";
-
-  if (partIndex < currentParts.length - 1) {
-    footerText = footerText + "  •  Click for more";
+    totalTime = totalTime + currentParts[i].time;
   }
-
-  document.getElementById("slideFooterContent").textContent = footerText}
-
+  totalTime = Math.round(totalTime * 100) / 100;
+  let footerText = "Time: " + totalTime + " min";
+  if (partIndex < currentParts.length - 1) {
+    footerText = footerText + "  •  Click for more";}
+  document.getElementById("slideFooterContent").textContent = footerText;}
 function checkAnswer(uniqueId, correctAnswer) {
   const inputBox = document.getElementById("vqInput_" + uniqueId);
   const responseText = document.getElementById("vqResponse_" + uniqueId);
-  const studentAnswer = inputBox.value;
+  const studentAnswer = inputBox.value.trim();
+  const cleanCorrectAnswer = String(correctAnswer || "").trim();
+
   if (studentAnswer === "") {
     alert("Please type an answer first.");
-    return;}
+    return;
+  }
 
   let isCorrect;
-  if (studentAnswer.toLowerCase() === correctAnswer.toLowerCase()) {
+
+  if (studentAnswer.toLowerCase() === cleanCorrectAnswer.toLowerCase()) {
     responseText.textContent = "Correct!";
     responseText.style.color = "green";
     isCorrect = true;
   } else {
-    responseText.textContent = "Wrong. Correct answer: " + correctAnswer;
+    responseText.textContent = "Wrong. Correct answer: " + cleanCorrectAnswer;
     responseText.style.color = "red";
-    isCorrect = false;}
+    isCorrect = false;
+  }
 
-  saveAnswerToBackend(uniqueId, studentAnswer, correctAnswer, isCorrect);}
-
+  saveAnswerToBackend(uniqueId, studentAnswer, cleanCorrectAnswer, isCorrect);
+}
 function saveAnswerToBackend(uniqueId, studentAnswer, correctAnswer, isCorrect) {
+  const currentSlide = slides[currentIndex];
+
   fetch("https://llef-slide-app.onrender.com/api/answers", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
+      slideId: currentSlide ? currentSlide._id : "",
       questionId: uniqueId,
       studentAnswer: studentAnswer,
       correctAnswer: correctAnswer,
@@ -225,36 +237,54 @@ function saveAnswerToBackend(uniqueId, studentAnswer, correctAnswer, isCorrect) 
       console.log("Answer saved:", data);
     })
     .catch(function (error) {
-      console.log("Error saving answer:", error);});}
+      console.log("Error saving answer:", error);
+    });
+}
+
 function goNext() {
   const lastIndex = slides.length - 1;
 
   if (currentIndex < lastIndex) {
     currentIndex = currentIndex + 1;
-    showSlide();}}
+    showSlide();
+  }
+}
+
 function goPrev() {
   if (currentIndex > 0) {
     currentIndex = currentIndex - 1;
-    showSlide();}}
+    showSlide();
+  }
+}
 
 function speakText(text) {
   speechSynthesis.cancel();
+
   const speech = new SpeechSynthesisUtterance(text);
   speechSynthesis.speak(speech);
 }
+
 function playAudio() {
   if (partIndex < 0) {
-    return;}
+    return;
+  }
+
   let textToSpeak = "";
+
   for (let i = 0; i <= partIndex; i++) {
     if (currentParts[i].kind === "text") {
       const spoken = getSpokenText(currentParts[i]);
 
       if (spoken !== "") {
-        textToSpeak = textToSpeak + spoken + ". ";}}}
+        textToSpeak = textToSpeak + spoken + ". ";
+      }
+    }
+  }
 
   if (textToSpeak !== "") {
-    speakText(textToSpeak);}}
+    speakText(textToSpeak);
+  }
+}
 
 document.getElementById("nextBtn").addEventListener("click", goNext);
 document.getElementById("prevBtn").addEventListener("click", goPrev);
