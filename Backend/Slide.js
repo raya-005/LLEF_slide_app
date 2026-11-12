@@ -9,6 +9,9 @@ const rowSchema = new mongoose.Schema({
   multimedia: {
     type: String,
     default: ""},
+  images: {
+    type: [String],
+    default: []},
   studyMaterials: {
     type: String,
     default: ""},
@@ -37,6 +40,9 @@ const slideSchema = new mongoose.Schema({
   image: {
     type: String,
     default: ""},
+  images: {
+    type: [String],
+    default: []},
   time: {
     type: Number,
     default: 0},

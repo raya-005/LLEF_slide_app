@@ -61,6 +61,19 @@ function getHeaderTitle(slide) {
 
   return "";
 }
+// পুরোনো slide-এ একটাই ছবি (image / multimedia) থাকত; নতুনগুলোতে images তালিকা
+function getSlideImages(slide) {
+  if (Array.isArray(slide.images) && slide.images.length > 0) {
+    return slide.images;
+  }
+  return slide.image ? [slide.image] : [];
+}
+function getRowImages(row) {
+  if (Array.isArray(row.images) && row.images.length > 0) {
+    return row.images;
+  }
+  return row.multimedia ? [row.multimedia] : [];
+}
 function buildPartsForSlide(slide) {
   const parts = [];
 
@@ -82,11 +95,12 @@ function buildPartsForSlide(slide) {
         });
       }
 
-      if (row.multimedia) {
+      const rowImages = getRowImages(row);
+      if (rowImages.length > 0) {
         parts.push({
           kind: "media",
           startsRow: !hasText,
-          multimedia: row.multimedia,
+          images: rowImages,
           time: hasText ? 0 : Number(row.time)
         });
       }
@@ -105,11 +119,12 @@ function buildPartsForSlide(slide) {
         isQuestion: false,
         answer: ""});}
 
-    if (slide.image) {
+    const slideImages = getSlideImages(slide);
+    if (slideImages.length > 0) {
       parts.push({
         kind: "media",
         startsRow: !hasText,
-        multimedia: slide.image,
+        images: slideImages,
         time: hasText ? 0 : Number(slide.time)});}}
 
   return parts;}
@@ -171,7 +186,11 @@ function revealNextPart() {
       partHTML = partHTML + "<p class='vqResponseText' id='vqResponse_" + uniqueId + "'></p>";}}
 
   if (part.kind === "media") {
-    partHTML = partHTML + "<img src='" + escapeHtml(part.multimedia) + "' style='max-height:320px; object-fit:contain;'>";
+    partHTML = partHTML + "<div style='display:flex; flex-wrap:wrap; gap:10px; justify-content:center;'>";
+    for (let k = 0; k < part.images.length; k++) {
+      partHTML = partHTML + "<img src='" + escapeHtml(part.images[k]) + "' style='max-height:320px; max-width:100%; object-fit:contain;'>";
+    }
+    partHTML = partHTML + "</div>";
   }
 
   partHTML = partHTML + "</div>";

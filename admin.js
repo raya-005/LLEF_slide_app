@@ -78,8 +78,15 @@ function compressImage(file) {
 // initialValue দিলে (edit-এর সময়) আগের ছবিটা আগে থেকেই দেখা যাবে
 // ফেরত দেয়: { element: পর্দায় বসানোর অংশ, getValue: বর্তমান ছবির মান দেয় }
 // ============================
-function createImagePicker(initialValue) {
-  let currentValue = initialValue || "";
+function createImagePicker(initialValues) {
+  const MAX_IMAGES = 6;
+  let images = [];
+
+  if (Array.isArray(initialValues)) {
+    images = initialValues.filter(Boolean);
+  } else if (initialValues) {
+    images = [initialValues];
+  }
 
   const wrapper = document.createElement("div");
   wrapper.className = "imagePicker";
@@ -87,77 +94,98 @@ function createImagePicker(initialValue) {
   const fileInput = document.createElement("input");
   fileInput.type = "file";
   fileInput.accept = "image/*";
+  fileInput.multiple = true;
+
+  const hint = document.createElement("p");
+  hint.className = "imageStatus";
+  hint.textContent = "You can choose more than one image (up to " + MAX_IMAGES + "). Choose again to add more.";
 
   const status = document.createElement("p");
   status.className = "imageStatus";
 
   const previewBox = document.createElement("div");
-
-  const removeBtn = document.createElement("button");
-  removeBtn.type = "button";
-  removeBtn.className = "danger";
-  removeBtn.textContent = "Remove image";
+  previewBox.style.display = "flex";
+  previewBox.style.flexWrap = "wrap";
+  previewBox.style.gap = "8px";
 
   wrapper.appendChild(fileInput);
+  wrapper.appendChild(hint);
   wrapper.appendChild(status);
   wrapper.appendChild(previewBox);
-  wrapper.appendChild(removeBtn);
 
-  // বর্তমান ছবি অনুযায়ী preview আর Remove বাটন ঠিক করা
+  // ছবিগুলোর ছোট preview, প্রতিটার নিচে নম্বর আর Remove বাটন
   function refresh() {
     previewBox.innerHTML = "";
 
-    if (currentValue === "") {
-      removeBtn.style.display = "none";
-      return;
+    for (let i = 0; i < images.length; i++) {
+      const item = document.createElement("div");
+
+      const img = document.createElement("img");
+      img.src = images[i];
+      img.alt = "Selected image " + (i + 1);
+
+      img.addEventListener("error", function () {
+        const note = document.createElement("p");
+        note.className = "imageStatus";
+        note.textContent = "(this image could not be shown, it may be a missing file)";
+        img.replaceWith(note);
+      });
+
+      const label = document.createElement("p");
+      label.className = "imageStatus";
+      label.textContent = "Image " + (i + 1);
+
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "danger";
+      removeBtn.textContent = "Remove";
+      removeBtn.addEventListener("click", function () {
+        images.splice(i, 1);
+        status.textContent = "";
+        refresh();
+      });
+
+      item.appendChild(img);
+      item.appendChild(label);
+      item.appendChild(removeBtn);
+      previewBox.appendChild(item);
     }
-
-    const img = document.createElement("img");
-    img.src = currentValue;
-    img.alt = "Selected image";
-
-    img.addEventListener("error", function () {
-      const note = document.createElement("p");
-      note.className = "imageStatus";
-      note.textContent = "(this image could not be shown, it may be a missing file)";
-      img.replaceWith(note);
-    });
-
-    previewBox.appendChild(img);
-    removeBtn.style.display = "inline-block";
   }
 
   fileInput.addEventListener("change", function () {
-    const file = fileInput.files[0];
+    const files = Array.from(fileInput.files);
 
-    if (!file) {
+    if (files.length === 0) {
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
-      status.textContent = "Please choose an image file (jpg, png, webp).";
+    for (let i = 0; i < files.length; i++) {
+      if (!files[i].type.startsWith("image/")) {
+        status.textContent = "Please choose image files only (jpg, png, webp).";
+        fileInput.value = "";
+        return;
+      }
+    }
+
+    if (images.length + files.length > MAX_IMAGES) {
+      status.textContent = "Too many images. The maximum is " + MAX_IMAGES + " per slide or row.";
       fileInput.value = "";
       return;
     }
 
-    status.textContent = "Processing the image...";
+    status.textContent = "Processing the images...";
 
-    compressImage(file)
-      .then(function (dataUrl) {
-        currentValue = dataUrl;
+    Promise.all(files.map(compressImage))
+      .then(function (dataUrls) {
+        images = images.concat(dataUrls);
         status.textContent = "";
+        fileInput.value = "";
         refresh();
       })
       .catch(function (error) {
         status.textContent = error.message;
+        fileInput.value = "";
       });
-  });
-
-  removeBtn.addEventListener("click", function () {
-    currentValue = "";
-    fileInput.value = "";
-    status.textContent = "";
-    refresh();
   });
 
   refresh();
@@ -165,9 +193,24 @@ function createImagePicker(initialValue) {
   return {
     element: wrapper,
     getValue: function () {
-      return currentValue;
+      return images.slice();
     }
   };
+}
+
+// পুরোনো slide-এ একটাই ছবি (image / multimedia) থাকত; নতুনগুলোতে images তালিকা
+function getSlideImages(slide) {
+  if (Array.isArray(slide.images) && slide.images.length > 0) {
+    return slide.images;
+  }
+  return slide.image ? [slide.image] : [];
+}
+
+function getRowImages(row) {
+  if (Array.isArray(row.images) && row.images.length > 0) {
+    return row.images;
+  }
+  return row.multimedia ? [row.multimedia] : [];
 }
 
 // ============================
@@ -231,7 +274,7 @@ function addRow(rowData) {
   container.appendChild(box);
 
   // এই row-এর ছবি বাছাই অংশ বসানো, আর box-এর সাথে জুড়ে রাখা যাতে পরে মান পড়া যায়
-  const picker = createImagePicker(rowData ? rowData.multimedia : "");
+  const picker = createImagePicker(rowData ? getRowImages(rowData) : []);
   box.querySelector(".r_imageBox").appendChild(picker.element);
   box.imagePicker = picker;
 
@@ -269,14 +312,14 @@ function collectRows() {
   for (let i = 0; i < boxes.length; i++) {
     const box = boxes[i];
     const vd = box.querySelector(".r_vd").value.trim();
-    const multimedia = box.imagePicker.getValue();
+    const images = box.imagePicker.getValue();
     const studyMaterials = box.querySelector(".r_study").value.trim();
     const timeText = box.querySelector(".r_time").value;
     const isQuestion = box.querySelector(".r_isQuestion").checked;
     const answer = box.querySelector(".r_answer").value.trim();
 
     // VD বাধ্যতামূলক নয়, তবে VD, ছবি, study materials - অন্তত একটা লাগবে
-    if (vd === "" && multimedia === "" && studyMaterials === "") {
+    if (vd === "" && images.length === 0 && studyMaterials === "") {
       showMessage("Row " + (i + 1) + ": add at least a VD, an image or study materials.", "red");
       return null;
     }
@@ -297,7 +340,7 @@ function collectRows() {
     rows.push({
       wd: box.querySelector(".r_wd").value.trim(),
       vd: vd,
-      multimedia: multimedia,
+      images: images,
       studyMaterials: studyMaterials,
       time: Number(timeText),
       isQuestion: isQuestion,
@@ -320,7 +363,7 @@ function saveSlide() {
   if (type === "simple") {
     const text = document.getElementById("s_text").value.trim();
     const vd = document.getElementById("s_vd").value.trim();
-    const image = simplePicker.getValue();
+    const images = simplePicker.getValue();
     const timeText = document.getElementById("s_time").value;
 
     if (title === "") {
@@ -328,7 +371,7 @@ function saveSlide() {
       return;
     }
     // VD বাধ্যতামূলক নয়, তবে text, VD, ছবি - অন্তত একটা লাগবে
-    if (text === "" && vd === "" && image === "") {
+    if (text === "" && vd === "" && images.length === 0) {
       showMessage("Add some text, a VD or an image.", "red");
       return;
     }
@@ -342,7 +385,7 @@ function saveSlide() {
       title: title,
       text: text,
       vd: vd,
-      image: image,
+      images: images,
       time: Number(timeText)
     };
   } else {
@@ -444,7 +487,7 @@ function startEdit(slide) {
     document.getElementById("s_text").value = slide.text || "";
     document.getElementById("s_vd").value = slide.vd || "";
     document.getElementById("s_time").value = slide.time;
-    mountSimplePicker(slide.image || "");
+    mountSimplePicker(getSlideImages(slide));
   } else {
     // toggleFields যে খালি row যোগ করেছে সেটা মুছে, আসল row-গুলো ভরা অবস্থায় বসানো
     document.getElementById("rowsContainer").innerHTML = "";
@@ -577,8 +620,9 @@ function showPreview(slide, itemElement) {
         addPreviewParagraph(rowBlock, row.vd);
       }
 
-      if (row.multimedia) {
-        addPreviewImage(rowBlock, row.multimedia);
+      const rowImgs = getRowImages(row);
+      for (let k = 0; k < rowImgs.length; k++) {
+        addPreviewImage(rowBlock, rowImgs[k]);
       }
 
       if (row.studyMaterials) {
@@ -617,8 +661,9 @@ function showPreview(slide, itemElement) {
       addPreviewParagraph(body, slide.vd);
     }
 
-    if (slide.image) {
-      addPreviewImage(body, slide.image);
+    const slideImgs = getSlideImages(slide);
+    for (let k = 0; k < slideImgs.length; k++) {
+      addPreviewImage(body, slideImgs[k]);
     }
 
     totalTime = Number(slide.time);

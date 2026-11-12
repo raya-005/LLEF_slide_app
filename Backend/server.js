@@ -27,18 +27,39 @@ function isBlank(value) {
 }
 const MAX_IMAGE_LENGTH = 1500000;
 
+const MAX_IMAGES = 6;
+
 function isImageTooBig(value) {
   return typeof value === "string" && value.length > MAX_IMAGE_LENGTH;}
+
+// একাধিক ছবির তালিকা (images) নেয়; না থাকলে পুরোনো একটা ছবির ঘর (legacy) থেকে নেয়
+function readImages(images, legacy) {
+  let list = [];
+  if (Array.isArray(images)) {
+    list = images.filter(function (v) {
+      return typeof v === "string" && v.trim() !== "";});}
+  if (list.length === 0 && !isBlank(legacy)) {
+    list = [legacy];}
+  return list;}
+function checkImages(list) {
+  if (list.length > MAX_IMAGES) {
+    return "Too many images. The maximum is " + MAX_IMAGES + ".";}
+  for (let i = 0; i < list.length; i++) {
+    if (isImageTooBig(list[i])) {
+      return "An image is too large. Please choose a smaller image.";}}
+  return "";}
 function buildSlideData(body) {
   const slideType = body.type === "vq" ? "vq" : "simple";
 
   if (slideType === "simple") {
-    if (isBlank(body.text) && isBlank(body.vd) && isBlank(body.image)) {
+    const images = readImages(body.images, body.image);
+    if (isBlank(body.text) && isBlank(body.vd) && images.length === 0) {
       return { error: "Add some text, a VD or an image." };}
     if (isBlank(body.time) || Number.isNaN(Number(body.time))) {
       return { error: "Time must be a number." };}
-    if (isImageTooBig(body.image)) {
-      return { error: "The image is too large. Please choose a smaller image." };}
+    const imageError = checkImages(images);
+    if (imageError) {
+      return { error: imageError };}
 
     return {
       data: {
@@ -46,7 +67,8 @@ function buildSlideData(body) {
         title: body.title || "",
         text: body.text || "",
         vd: body.vd || "",
-        image: body.image || "",
+        image: "",
+        images: images,
         time: Number(body.time),
         rows: []}};}
   if (!Array.isArray(body.rows) || body.rows.length === 0) {
@@ -56,14 +78,16 @@ function buildSlideData(body) {
   for (let i = 0; i < body.rows.length; i++) {
     const row = body.rows[i];
     const rowName = "Row " + (i + 1) + ": ";
-    if (isBlank(row.vd) && isBlank(row.multimedia) && isBlank(row.studyMaterials)) {
+    const rowImages = readImages(row.images, row.multimedia);
+    if (isBlank(row.vd) && rowImages.length === 0 && isBlank(row.studyMaterials)) {
       return { error: rowName + "add at least a VD, an image or study materials." };
     }
     if (isBlank(row.time) || Number.isNaN(Number(row.time))) {
       return { error: rowName + "Time must be a number." };
     }
-    if (isImageTooBig(row.multimedia)) {
-      return { error: rowName + "the image is too large. Please choose a smaller image." };
+    const rowImageError = checkImages(rowImages);
+    if (rowImageError) {
+      return { error: rowName + rowImageError };
     }
 
     const isQuestion = row.isQuestion === true || row.isQuestion === "true";
@@ -76,7 +100,8 @@ function buildSlideData(body) {
     rows.push({
       wd: row.wd || "",
       vd: row.vd || "",
-      multimedia: row.multimedia || "",
+      multimedia: "",
+      images: rowImages,
       studyMaterials: row.studyMaterials || "",
       time: Number(row.time),
       isQuestion: isQuestion,
@@ -89,6 +114,7 @@ function buildSlideData(body) {
       text: "",
       vd: "",
       image: "",
+      images: [],
       time: 0,
       rows: rows}};}
 
