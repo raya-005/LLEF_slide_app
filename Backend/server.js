@@ -31,8 +31,6 @@ const MAX_IMAGES = 6;
 
 function isImageTooBig(value) {
   return typeof value === "string" && value.length > MAX_IMAGE_LENGTH;}
-
-// একাধিক ছবির তালিকা (images) নেয়; না থাকলে পুরোনো একটা ছবির ঘর (legacy) থেকে নেয়
 function readImages(images, legacy) {
   let list = [];
   if (Array.isArray(images)) {
@@ -121,6 +119,12 @@ function buildSlideData(body) {
 app.get("/api/slides", async function (req, res) {
   try {
     const slidesFromDB = await Slide.find();
+    slidesFromDB.sort(function (a, b) {
+      const oa = typeof a.order === "number" ? a.order : -1;
+      const ob = typeof b.order === "number" ? b.order : -1;
+      if (oa !== ob) {
+        return oa - ob;}
+      return String(a._id).localeCompare(String(b._id));});
     res.json(slidesFromDB);
   } catch (error) {
     console.log("Error fetching slides:", error);
@@ -132,6 +136,8 @@ app.post("/api/slides", async function (req, res) {
     if (result.error) {
       return res.status(400).json({ message: result.error });
     }
+    const last = await Slide.findOne({ order: { $type: "number" } }).sort({ order: -1 });
+    result.data.order = last ? last.order + 1 : 0;
 
     const createdSlide = await Slide.create(result.data);
     res.status(201).json(createdSlide);
@@ -141,6 +147,26 @@ app.post("/api/slides", async function (req, res) {
     }
     console.log("Error creating slide:", error);
     res.status(500).json({ message: "Error creating slide" });}});
+app.post("/api/slides-order", async function (req, res) {
+  try {
+    const ids = req.body.ids;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: "ids must be a list of slide ids." });}
+    const total = await Slide.countDocuments();
+    if (new Set(ids).size !== ids.length || ids.length !== total) {
+      return res.status(400).json({ message: "The list must contain every slide exactly once." });}
+
+    await Slide.bulkWrite(ids.map(function (id, index) {
+      return { updateOne: { filter: { _id: id }, update: { $set: { order: index } } } };}));
+
+    res.json({ message: "Order saved" });
+  } catch (error) {
+    if (error.name === "CastError") {
+      return res.status(400).json({ message: "Invalid slide id" });
+    }
+    console.log("Error saving order:", error);
+    res.status(500).json({ message: "Error saving order" });}});
 app.put("/api/slides/:id", async function (req, res) {
   try {
     const result = buildSlideData(req.body);
@@ -209,9 +235,6 @@ app.get("/api/answers", async function (req, res) {
     res.json(answers);
   } catch (error) {
     console.log("Error fetching answers:", error);
-    res.status(500).json({ message: "Error fetching answers" });
-  }
-});
-
+    res.status(500).json({ message: "Error fetching answers" });}});
 app.listen(PORT, () => {
   console.log("Server is running on http://localhost:" + PORT);});

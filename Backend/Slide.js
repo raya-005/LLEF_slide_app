@@ -46,6 +46,8 @@ const slideSchema = new mongoose.Schema({
   time: {
     type: Number,
     default: 0},
+  order: {
+    type: Number},
   rows: [rowSchema]});
 const Slide = mongoose.model("Slide", slideSchema);
 module.exports = Slide;

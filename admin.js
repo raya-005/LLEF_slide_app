@@ -1,35 +1,16 @@
 const API_URL = "https://llef-slide-app.onrender.com";
-
-// ============================
-// কোন slide edit করা হচ্ছে, তার id
-// null মানে এখন নতুন slide বানানো হচ্ছে
-// ============================
 let editingId = null;
-
-// simple slide-এর ছবি বাছাইয়ের অংশ এই variable-এ থাকে
 let simplePicker = null;
-
-// সব slide এখানে জমা থাকে, যাতে উত্তরের তালিকায় slide-এর নাম দেখানো যায়
 let allSlides = [];
-
-// নতুন: সব উত্তর এখানে জমা থাকে, যাতে CSV বানানোর সময় আবার server-কে জিজ্ঞেস করতে না হয়
 let allAnswers = [];
 
 function showMessage(text, color) {
   const messageBox = document.getElementById("message");
   messageBox.textContent = text;
-  messageBox.style.color = color;
-}
-
-// ============================
-// ছবির ফাইল পড়ে ছোট আর হালকা করা
-// সবচেয়ে লম্বা দিক ৮০০px-এর বেশি হবে না, আর JPEG হিসেবে জমা হবে
-// শেষে ছবিটা লেখার আকারে (data URL) ফেরত দেয়
-// ============================
+  messageBox.style.color = color;}
 function compressImage(file) {
   return new Promise(function (resolve, reject) {
     const reader = new FileReader();
-
     reader.onload = function () {
       const img = new Image();
 
@@ -41,43 +22,29 @@ function compressImage(file) {
         if (width > maxSize || height > maxSize) {
           const scale = maxSize / Math.max(width, height);
           width = Math.round(width * scale);
-          height = Math.round(height * scale);
-        }
+          height = Math.round(height * scale);}
 
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
-
         const ctx = canvas.getContext("2d");
-
-        // স্বচ্ছ (transparent) ছবি JPEG-এ কালো হয়ে যায়, তাই আগে সাদা রং দেওয়া
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
-        resolve(canvas.toDataURL("image/jpeg", 0.8));
-      };
+        resolve(canvas.toDataURL("image/jpeg", 0.8));};
 
       img.onerror = function () {
-        reject(new Error("Could not read this image."));
-      };
+        reject(new Error("Could not read this image."));};
 
-      img.src = reader.result;
-    };
+      img.src = reader.result;};
 
     reader.onerror = function () {
       reject(new Error("Could not read this file."));
     };
 
-    reader.readAsDataURL(file);
-  });
-}
+    reader.readAsDataURL(file);});}
 
-// ============================
-// একটা "ছবি বাছাই" অংশ বানানো (ফাইল বাছাই + ছোট preview + Remove বাটন)
-// initialValue দিলে (edit-এর সময়) আগের ছবিটা আগে থেকেই দেখা যাবে
-// ফেরত দেয়: { element: পর্দায় বসানোর অংশ, getValue: বর্তমান ছবির মান দেয় }
-// ============================
 function createImagePicker(initialValues) {
   const MAX_IMAGES = 6;
   let images = [];
@@ -95,14 +62,11 @@ function createImagePicker(initialValues) {
   fileInput.type = "file";
   fileInput.accept = "image/*";
   fileInput.multiple = true;
-
   const hint = document.createElement("p");
   hint.className = "imageStatus";
   hint.textContent = "You can choose more than one image (up to " + MAX_IMAGES + "). Choose again to add more.";
-
   const status = document.createElement("p");
   status.className = "imageStatus";
-
   const previewBox = document.createElement("div");
   previewBox.style.display = "flex";
   previewBox.style.flexWrap = "wrap";
@@ -112,8 +76,6 @@ function createImagePicker(initialValues) {
   wrapper.appendChild(hint);
   wrapper.appendChild(status);
   wrapper.appendChild(previewBox);
-
-  // ছবিগুলোর ছোট preview, প্রতিটার নিচে নম্বর আর Remove বাটন
   function refresh() {
     previewBox.innerHTML = "";
 
@@ -148,9 +110,7 @@ function createImagePicker(initialValues) {
       item.appendChild(img);
       item.appendChild(label);
       item.appendChild(removeBtn);
-      previewBox.appendChild(item);
-    }
-  }
+      previewBox.appendChild(item);}}
 
   fileInput.addEventListener("change", function () {
     const files = Array.from(fileInput.files);
@@ -193,12 +153,7 @@ function createImagePicker(initialValues) {
   return {
     element: wrapper,
     getValue: function () {
-      return images.slice();
-    }
-  };
-}
-
-// পুরোনো slide-এ একটাই ছবি (image / multimedia) থাকত; নতুনগুলোতে images তালিকা
+      return images.slice();}};}
 function getSlideImages(slide) {
   if (Array.isArray(slide.images) && slide.images.length > 0) {
     return slide.images;
@@ -210,23 +165,13 @@ function getRowImages(row) {
   if (Array.isArray(row.images) && row.images.length > 0) {
     return row.images;
   }
-  return row.multimedia ? [row.multimedia] : [];
-}
-
-// ============================
-// simple slide-এর ছবি বাছাই অংশটা নতুন করে বসানো
-// ============================
+  return row.multimedia ? [row.multimedia] : [];}
 function mountSimplePicker(value) {
   const container = document.getElementById("s_imageBox");
   container.innerHTML = "";
 
   simplePicker = createImagePicker(value);
-  container.appendChild(simplePicker.element);
-}
-
-// ============================
-// Slide type বদলালে সঠিক fields দেখানো
-// ============================
+  container.appendChild(simplePicker.element);}
 function toggleFields() {
   const type = document.getElementById("slideType").value;
 
@@ -237,17 +182,8 @@ function toggleFields() {
     document.getElementById("simpleFields").style.display = "none";
     document.getElementById("vqFields").style.display = "block";
 
-    // কোনো row না থাকলে একটা খালি row নিজে থেকেই দেখানো
     if (document.getElementsByClassName("rowBox").length === 0) {
-      addRow();
-    }
-  }
-}
-
-// ============================
-// নতুন একটা row-এর form যোগ করা
-// rowData দিলে (edit-এর সময়) ঘরগুলো সেই data দিয়ে আগে থেকে ভরা থাকবে
-// ============================
+      addRow();}}}
 function addRow(rowData) {
   const container = document.getElementById("rowsContainer");
   const rowNumber = container.children.length + 1;
@@ -267,18 +203,14 @@ function addRow(rowData) {
     "<label>Time (minutes, required)</label>" +
     "<input type='number' class='r_time' step='0.01' min='0'>" +
     "<div class='checkRow'><input type='checkbox' class='r_isQuestion'> This row is a question (the VD is the question text)</div>" +
-    "<label>Correct answer (only if it is a question)</label>" +
+    "<label>Correct answer (only if it is a question). For more than one accepted answer, separate them with | , for example: ampere|amps|a</label>" +
     "<input type='text' class='r_answer'>" +
     "<button type='button' class='danger removeRowBtn'>Remove this row</button>";
 
   container.appendChild(box);
-
-  // এই row-এর ছবি বাছাই অংশ বসানো, আর box-এর সাথে জুড়ে রাখা যাতে পরে মান পড়া যায়
   const picker = createImagePicker(rowData ? getRowImages(rowData) : []);
   box.querySelector(".r_imageBox").appendChild(picker.element);
   box.imagePicker = picker;
-
-  // edit-এর সময় আগের data ঘরগুলোতে বসানো (.value দিয়ে, তাই লেখা কখনো HTML হিসেবে চলে না)
   if (rowData) {
     box.querySelector(".r_wd").value = rowData.wd || "";
     box.querySelector(".r_vd").value = rowData.vd || "";
@@ -297,14 +229,7 @@ function addRow(rowData) {
 function renumberRows() {
   const headings = document.querySelectorAll(".rowBox h4");
   for (let i = 0; i < headings.length; i++) {
-    headings[i].textContent = "Row " + (i + 1);
-  }
-}
-
-// ============================
-// সব row-এর data জড়ো করা, সাথে সঠিক type-এ রূপান্তর (Number, Boolean, String)
-// কোনো ভুল পেলে null ফেরত দেয়
-// ============================
+    headings[i].textContent = "Row " + (i + 1);}}
 function collectRows() {
   const boxes = document.getElementsByClassName("rowBox");
   const rows = [];
@@ -318,16 +243,13 @@ function collectRows() {
     const isQuestion = box.querySelector(".r_isQuestion").checked;
     const answer = box.querySelector(".r_answer").value.trim();
 
-    // VD বাধ্যতামূলক নয়, তবে VD, ছবি, study materials - অন্তত একটা লাগবে
     if (vd === "" && images.length === 0 && studyMaterials === "") {
       showMessage("Row " + (i + 1) + ": add at least a VD, an image or study materials.", "red");
       return null;
     }
     if (timeText === "") {
       showMessage("Row " + (i + 1) + ": Time is required.", "red");
-      return null;
-    }
-    // প্রশ্নের লেখাটাই VD, তাই প্রশ্নের row-তে VD লাগবে
+      return null;}
     if (isQuestion && vd === "") {
       showMessage("Row " + (i + 1) + ": a question needs a VD (the question text).", "red");
       return null;
@@ -345,16 +267,10 @@ function collectRows() {
       time: Number(timeText),
       isQuestion: isQuestion,
       answer: answer
-    });
-  }
+    });}
 
   return rows;
 }
-
-// ============================
-// Slide save করা
-// নতুন হলে POST, edit চলাকালীন হলে PUT (একই slide বদলায়)
-// ============================
 function saveSlide() {
   const type = document.getElementById("slideType").value;
   const title = document.getElementById("title").value.trim();
@@ -370,7 +286,6 @@ function saveSlide() {
       showMessage("Title is required for a simple slide.", "red");
       return;
     }
-    // VD বাধ্যতামূলক নয়, তবে text, VD, ছবি - অন্তত একটা লাগবে
     if (text === "" && vd === "" && images.length === 0) {
       showMessage("Add some text, a VD or an image.", "red");
       return;
@@ -409,8 +324,6 @@ function saveSlide() {
   const isEditing = editingId !== null;
   const url = isEditing ? API_URL + "/api/slides/" + editingId : API_URL + "/api/slides";
   const method = isEditing ? "PUT" : "POST";
-
-  // সার্ভার ঘুম থেকে জাগতে সময় নিলে দুইবার চাপা আটকাতে বাটন বন্ধ রাখা
   const saveBtn = document.getElementById("saveBtn");
   saveBtn.disabled = true;
 
@@ -446,12 +359,7 @@ function saveSlide() {
     })
     .finally(function () {
       saveBtn.disabled = false;
-    });
-}
-
-// ============================
-// ফর্মের সব ঘর খালি করা (কোনো row যোগ না করে)
-// ============================
+    });}
 function resetFields() {
   document.getElementById("title").value = "";
   document.getElementById("s_text").value = "";
@@ -466,12 +374,7 @@ function clearForm() {
 
   if (document.getElementById("slideType").value === "vq") {
     addRow();
-  }
-}
-
-// ============================
-// কোনো slide-এর Edit বাটন চাপলে ফর্মে তার data ভরে দেওয়া
-// ============================
+  }}
 function startEdit(slide) {
   editingId = slide._id;
 
@@ -489,7 +392,7 @@ function startEdit(slide) {
     document.getElementById("s_time").value = slide.time;
     mountSimplePicker(getSlideImages(slide));
   } else {
-    // toggleFields যে খালি row যোগ করেছে সেটা মুছে, আসল row-গুলো ভরা অবস্থায় বসানো
+  
     document.getElementById("rowsContainer").innerHTML = "";
     for (let i = 0; i < slide.rows.length; i++) {
       addRow(slide.rows[i]);
@@ -506,10 +409,6 @@ function startEdit(slide) {
   showMessage("", "");
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
-
-// ============================
-// Edit অবস্থা থেকে বের হয়ে আবার নতুন slide বানানোর অবস্থায় ফেরা
-// ============================
 function exitEditMode() {
   editingId = null;
 
@@ -524,11 +423,6 @@ function cancelEdit() {
   exitEditMode();
   showMessage("Edit cancelled.", "#555");
 }
-
-// ============================
-// Slide-এর তালিকায় আর preview-র header-এ দেখানোর নাম বের করা
-// (index.html-এর getHeaderTitle-এর মতোই)
-// ============================
 function getSlideLabel(slide) {
   if (slide.title) {
     return slide.title;
@@ -542,13 +436,7 @@ function getSlideLabel(slide) {
     }
   }
 
-  return "(untitled)";
-}
-
-// ============================
-// একটা <p> বানিয়ে parent-এ যোগ করা
-// textContent ব্যবহার করা হয়েছে, তাই slide-এর লেখা কখনো HTML হিসেবে চলবে না
-// ============================
+  return "(untitled)";}
 function addPreviewParagraph(parent, text, className) {
   const p = document.createElement("p");
   p.textContent = text;
@@ -557,11 +445,6 @@ function addPreviewParagraph(parent, text, className) {
   }
   parent.appendChild(p);
 }
-
-// ============================
-// ছবি দেখানো; ছবি না পেলে একটা ছোট নোট দেখানো
-// (ছবির মান অনেক লম্বা লেখা হতে পারে, তাই সেটা নোটে ছাপানো হয় না)
-// ============================
 function addPreviewImage(parent, imageValue) {
   const img = document.createElement("img");
   img.className = "previewImg";
@@ -577,16 +460,10 @@ function addPreviewImage(parent, imageValue) {
 
   parent.appendChild(img);
 }
-
-// ============================
-// তালিকার কোনো slide-এ click করলে আসল slide-এর মতো চেহারায় preview দেখানো:
-// header (title) + body (content) + footer (মোট time)
-// ============================
 function showPreview(slide, itemElement) {
   const box = document.getElementById("slidePreview");
   box.innerHTML = "";
 
-  // বর্তমান বাছাই করা slide-টাকে তালিকায় হাইলাইট করা
   const allItems = document.getElementsByClassName("slideItem");
   for (let i = 0; i < allItems.length; i++) {
     allItems[i].classList.remove("selected");
@@ -596,13 +473,11 @@ function showPreview(slide, itemElement) {
   const card = document.createElement("div");
   card.className = "previewSlide";
 
-  // ---------- header ----------
   const header = document.createElement("div");
   header.className = "slideHeader";
   header.textContent = getSlideLabel(slide);
   card.appendChild(header);
 
-  // ---------- body ----------
   const body = document.createElement("div");
   body.className = "slideBody";
 
@@ -615,7 +490,6 @@ function showPreview(slide, itemElement) {
       const rowBlock = document.createElement("div");
       rowBlock.className = "rowBlock";
 
-      // VD খালি থাকলে কিছু দেখানো হয় না
       if (row.vd) {
         addPreviewParagraph(rowBlock, row.vd);
       }
@@ -630,7 +504,6 @@ function showPreview(slide, itemElement) {
       }
 
       if (row.isQuestion) {
-        // ছাত্র যেভাবে দেখবে সেভাবে, কিন্তু বাটন/ঘর বন্ধ (disabled)
         const input = document.createElement("input");
         input.type = "text";
         input.placeholder = "Type your answer";
@@ -643,16 +516,13 @@ function showPreview(slide, itemElement) {
 
         rowBlock.appendChild(input);
         rowBlock.appendChild(submit);
-
-        // শুধু admin-এর জন্য নোট, ছাত্র এটা দেখবে না
-        addPreviewParagraph(rowBlock, "Admin note: correct answer is \"" + row.answer + "\"", "adminNote");
+        addPreviewParagraph(rowBlock, "Admin note: correct answer is \"" + row.answer.split("|").map(function (a) { return a.trim(); }).join("\" or \"") + "\"", "adminNote");
       }
 
       body.appendChild(rowBlock);
       totalTime = totalTime + Number(row.time);
     }
   } else {
-    // আসল slide-এর মতোই Text দেখানো, তার নিচে VD (দুটো একই হলে একবারই)
     if (slide.text) {
       addPreviewParagraph(body, slide.text);
     }
@@ -671,8 +541,6 @@ function showPreview(slide, itemElement) {
 
   card.appendChild(body);
 
-  // ---------- footer ----------
-  // 0.5 + 0.5 + 0.01 এর মতো যোগে ভাসমান সংখ্যার গোলমাল এড়াতে round করা
   const roundedTime = Math.round(totalTime * 100) / 100;
 
   const footer = document.createElement("div");
@@ -680,17 +548,12 @@ function showPreview(slide, itemElement) {
   footer.textContent = "Time: " + roundedTime + " min";
   card.appendChild(footer);
 
-  box.appendChild(card);
-}
+  box.appendChild(card);}
 
 function clearPreview() {
   document.getElementById("slidePreview").innerHTML =
-    "<span class='previewHint'>No slide selected yet.</span>";
-}
+    "<span class='previewHint'>No slide selected yet.</span>";}
 
-// ============================
-// উত্তরের slideId দেখে slide-এর নাম বের করা
-// ============================
 function findSlideLabelById(slideId) {
   if (!slideId) {
     return "-";
@@ -698,18 +561,9 @@ function findSlideLabelById(slideId) {
 
   for (let i = 0; i < allSlides.length; i++) {
     if (allSlides[i]._id === slideId) {
-      return getSlideLabel(allSlides[i]);
-    }
-  }
-
-  // slide পরে মুছে ফেলা হয়েছে
+      return getSlideLabel(allSlides[i]);}}
   return "(deleted slide)";
 }
-
-// ============================
-// একটা ঘর (<td>) বানিয়ে row-তে যোগ করা
-// textContent ব্যবহার করা হয়েছে, তাই ছাত্রের লেখা কখনো HTML হিসেবে চলবে না
-// ============================
 function addAnswerCell(row, text, className) {
   const cell = document.createElement("td");
   cell.textContent = text;
@@ -720,10 +574,6 @@ function addAnswerCell(row, text, className) {
 
   row.appendChild(cell);
 }
-
-// ============================
-// ছাত্রদের সব উত্তর server থেকে এনে টেবিলে দেখানো (নতুনগুলো আগে)
-// ============================
 function loadAnswers() {
   const box = document.getElementById("answersBox");
   const summary = document.getElementById("answersSummary");
@@ -736,10 +586,7 @@ function loadAnswers() {
       box.innerHTML = "";
 
       if (!Array.isArray(answers)) {
-        throw new Error("Unexpected reply from the server");
-      }
-
-      // নতুন: CSV-র জন্য উত্তরগুলো মনে রাখা
+        throw new Error("Unexpected reply from the server");}
       allAnswers = answers;
 
       if (answers.length === 0) {
@@ -811,13 +658,6 @@ function loadAnswers() {
       box.textContent = "Could not load the answers. Is the backend running?";
     });
 }
-
-// ============================
-// নতুন: CSV-র একটা ঘরের লেখাকে নিরাপদ করা
-// ১) কমা, উদ্ধৃতি চিহ্ন বা নতুন লাইন থাকলে ঘরটা " " দিয়ে ঘিরে দেওয়া (ভেতরের " হয় "")
-// ২) = + - @ দিয়ে শুরু হলে সামনে ' বসানো, যাতে Excel লেখাটাকে সূত্র (formula) হিসেবে না চালায়
-//    (ছাত্র ইচ্ছে করে এমন লেখা দিলে ফাইল খুলে ক্ষতি হতে পারত)
-// ============================
 function csvCell(value) {
   let text = String(value === undefined || value === null ? "" : value);
 
@@ -832,10 +672,7 @@ function csvCell(value) {
   return text;
 }
 
-// ============================
-// নতুন: সব উত্তর CSV ফাইল বানিয়ে download করানো
-// কলাম: Time, Slide, Student's answer, Correct answer, Result
-// ============================
+
 function downloadAnswersCsv() {
   if (allAnswers.length === 0) {
     alert("There are no answers to download yet.");
@@ -867,13 +704,11 @@ function downloadAnswersCsv() {
     lines.push(cells.map(csvCell).join(","));
   }
 
-  // শুরুর \uFEFF থাকলে Excel বাংলা বা অন্য ভাষার লেখা ঠিকভাবে পড়ে
+
   const csvText = "\uFEFF" + lines.join("\r\n");
 
   const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
-
-  // ফাইলের নামে আজকের তারিখ, যেমন student-answers-2026-11-05.csv
   const today = new Date();
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const day = String(today.getDate()).padStart(2, "0");
@@ -889,10 +724,6 @@ function downloadAnswersCsv() {
   URL.revokeObjectURL(url);
 }
 
-// ============================
-// এখন পর্যন্ত থাকা সব slide দেখানো
-// নামে click করলে preview, সাথে Edit আর Delete বাটন
-// ============================
 function loadSlideList() {
   const listBox = document.getElementById("slideList");
 
@@ -904,7 +735,6 @@ function loadSlideList() {
       listBox.innerHTML = "";
       clearPreview();
 
-      // slide-এর তালিকা মনে রাখা, তারপর উত্তরের তালিকা (slide-এর নামসহ) নতুন করে আনা
       allSlides = slides;
       loadAnswers();
 
@@ -940,8 +770,28 @@ function loadSlideList() {
           deleteSlide(slide._id, getSlideLabel(slide));
         });
 
+        const upBtn = document.createElement("button");
+        upBtn.className = "secondary small";
+        upBtn.textContent = "\u25B2";
+        upBtn.title = "Move up";
+        upBtn.disabled = i === 0;
+        upBtn.addEventListener("click", function () {
+          moveSlide(i, -1);
+        });
+
+        const downBtn = document.createElement("button");
+        downBtn.className = "secondary small";
+        downBtn.textContent = "\u25BC";
+        downBtn.title = "Move down";
+        downBtn.disabled = i === slides.length - 1;
+        downBtn.addEventListener("click", function () {
+          moveSlide(i, 1);
+        });
+
         const actions = document.createElement("div");
         actions.className = "slideActions";
+        actions.appendChild(upBtn);
+        actions.appendChild(downBtn);
         actions.appendChild(editBtn);
         actions.appendChild(deleteBtn);
 
@@ -955,10 +805,43 @@ function loadSlideList() {
     });
 }
 
-// ============================
-// slide মুছে ফেলা
-// ব্যর্থ হলে আসল কারণ (server-এর বার্তা বা status) পর্দায় দেখায়
-// ============================
+function moveSlide(index, direction) {
+  const target = index + direction;
+
+  if (target < 0 || target >= allSlides.length) {
+    return;
+  }
+
+  const ids = allSlides.map(function (s) {
+    return s._id;
+  });
+  const moved = ids[index];
+  ids[index] = ids[target];
+  ids[target] = moved;
+
+  showMessage("Saving the new order...", "#555");
+
+  fetch(API_URL + "/api/slides-order", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids: ids })
+  })
+    .then(function (response) {
+      return response.json().then(function (data) {
+        if (!response.ok) {
+          throw new Error(data.message || "Could not save the order.");
+        }
+      });
+    })
+    .then(function () {
+      showMessage("Order saved.", "green");
+      loadSlideList();
+    })
+    .catch(function (error) {
+      showMessage(error.message, "red");
+    });
+}
+
 function deleteSlide(id, name) {
   const sure = confirm("Delete the slide \"" + name + "\"?");
   if (!sure) {
@@ -971,7 +854,7 @@ function deleteSlide(id, name) {
     method: "DELETE"
   })
     .then(function (response) {
-      // উত্তর আগে লেখা হিসেবে নেওয়া, তারপর JSON কিনা দেখা
+      
       return response.text().then(function (text) {
         let data = null;
 
@@ -996,7 +879,7 @@ function deleteSlide(id, name) {
       });
     })
     .then(function () {
-      // যে slide edit করছিলাম সেটাই মুছে গেলে edit অবস্থা বন্ধ করা
+    
       if (id === editingId) {
         exitEditMode();
       }
@@ -1011,21 +894,15 @@ function deleteSlide(id, name) {
 
 document.getElementById("slideType").addEventListener("change", toggleFields);
 
-// addRow সরাসরি দিলে click event-টা rowData হিসেবে ঢুকে যেত, তাই ফাঁকা function দিয়ে ডাকা
+
 document.getElementById("addRowBtn").addEventListener("click", function () {
   addRow();
 });
 
 document.getElementById("saveBtn").addEventListener("click", saveSlide);
 document.getElementById("cancelEditBtn").addEventListener("click", cancelEdit);
-
-// উত্তরের তালিকা নতুন করে আনার বাটন
 document.getElementById("refreshAnswersBtn").addEventListener("click", loadAnswers);
-
-// নতুন: CSV download বাটন
 document.getElementById("downloadCsvBtn").addEventListener("click", downloadAnswersCsv);
-
-// পাতা খোলার সময় simple slide-এর ছবি বাছাই অংশ বসানো
 mountSimplePicker("");
 toggleFields();
 loadSlideList();

@@ -21,6 +21,22 @@ function normalizeAnswer(text) {
     .replace(/\s+/g, " ")
     .toLowerCase();
 }
+function splitAnswers(correctAnswer) {
+  return String(correctAnswer || "")
+    .split("|")
+    .map(normalizeAnswer)
+    .filter(function (a) {
+      return a !== "";});
+}
+function formatCorrectAnswers(correctAnswer) {
+  return String(correctAnswer || "")
+    .split("|")
+    .map(function (a) {
+      return a.trim();})
+    .filter(function (a) {
+      return a !== "";})
+    .join(" / ");
+}
 function loadSlides() {
   document.getElementById("progressText").textContent = "Loading...";
   document.getElementById("slideBox").innerHTML =
@@ -61,7 +77,6 @@ function getHeaderTitle(slide) {
 
   return "";
 }
-// পুরোনো slide-এ একটাই ছবি (image / multimedia) থাকত; নতুনগুলোতে images তালিকা
 function getSlideImages(slide) {
   if (Array.isArray(slide.images) && slide.images.length > 0) {
     return slide.images;
@@ -247,12 +262,12 @@ function checkAnswer(uniqueId, correctAnswer) {
 
   let isCorrect;
 
-  if (normalizeAnswer(studentAnswer) === normalizeAnswer(cleanCorrectAnswer)) {
+  if (splitAnswers(cleanCorrectAnswer).includes(normalizeAnswer(studentAnswer))) {
     responseText.textContent = "Correct!";
     responseText.style.color = "green";
     isCorrect = true;
   } else {
-    responseText.textContent = "Wrong. Correct answer: " + cleanCorrectAnswer;
+    responseText.textContent = "Wrong. Correct answer: " + formatCorrectAnswers(cleanCorrectAnswer);
     responseText.style.color = "red";
     isCorrect = false;
   }
