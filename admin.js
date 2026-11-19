@@ -7,10 +7,13 @@ let allAnswers = [];
 function showMessage(text, color) {
   const messageBox = document.getElementById("message");
   messageBox.textContent = text;
-  messageBox.style.color = color;}
+  messageBox.style.color = color;
+}
+
 function compressImage(file) {
   return new Promise(function (resolve, reject) {
     const reader = new FileReader();
+
     reader.onload = function () {
       const img = new Image();
 
@@ -22,29 +25,34 @@ function compressImage(file) {
         if (width > maxSize || height > maxSize) {
           const scale = maxSize / Math.max(width, height);
           width = Math.round(width * scale);
-          height = Math.round(height * scale);}
+          height = Math.round(height * scale);
+        }
 
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
+
         const ctx = canvas.getContext("2d");
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
-        resolve(canvas.toDataURL("image/jpeg", 0.8));};
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
 
       img.onerror = function () {
-        reject(new Error("Could not read this image."));};
+        reject(new Error("Could not read this image."));
+      };
 
-      img.src = reader.result;};
+      img.src = reader.result;
+    };
 
     reader.onerror = function () {
       reject(new Error("Could not read this file."));
     };
 
-    reader.readAsDataURL(file);});}
-
+    reader.readAsDataURL(file);
+  });}
 function createImagePicker(initialValues) {
   const MAX_IMAGES = 6;
   let images = [];
@@ -62,11 +70,14 @@ function createImagePicker(initialValues) {
   fileInput.type = "file";
   fileInput.accept = "image/*";
   fileInput.multiple = true;
+
   const hint = document.createElement("p");
   hint.className = "imageStatus";
   hint.textContent = "You can choose more than one image (up to " + MAX_IMAGES + "). Choose again to add more.";
+
   const status = document.createElement("p");
   status.className = "imageStatus";
+
   const previewBox = document.createElement("div");
   previewBox.style.display = "flex";
   previewBox.style.flexWrap = "wrap";
@@ -110,7 +121,9 @@ function createImagePicker(initialValues) {
       item.appendChild(img);
       item.appendChild(label);
       item.appendChild(removeBtn);
-      previewBox.appendChild(item);}}
+      previewBox.appendChild(item);
+    }
+  }
 
   fileInput.addEventListener("change", function () {
     const files = Array.from(fileInput.files);
@@ -153,7 +166,8 @@ function createImagePicker(initialValues) {
   return {
     element: wrapper,
     getValue: function () {
-      return images.slice();}};}
+      return images.slice();
+    }};}
 function getSlideImages(slide) {
   if (Array.isArray(slide.images) && slide.images.length > 0) {
     return slide.images;
@@ -165,13 +179,16 @@ function getRowImages(row) {
   if (Array.isArray(row.images) && row.images.length > 0) {
     return row.images;
   }
-  return row.multimedia ? [row.multimedia] : [];}
+  return row.multimedia ? [row.multimedia] : [];
+}
 function mountSimplePicker(value) {
   const container = document.getElementById("s_imageBox");
   container.innerHTML = "";
 
   simplePicker = createImagePicker(value);
-  container.appendChild(simplePicker.element);}
+  container.appendChild(simplePicker.element);
+}
+
 function toggleFields() {
   const type = document.getElementById("slideType").value;
 
@@ -181,9 +198,11 @@ function toggleFields() {
   } else {
     document.getElementById("simpleFields").style.display = "none";
     document.getElementById("vqFields").style.display = "block";
-
     if (document.getElementsByClassName("rowBox").length === 0) {
-      addRow();}}}
+      addRow();
+    }
+  }
+}=
 function addRow(rowData) {
   const container = document.getElementById("rowsContainer");
   const rowNumber = container.children.length + 1;
@@ -198,6 +217,8 @@ function addRow(rowData) {
     "<textarea class='r_vd'></textarea>" +
     "<label>Image (optional)</label>" +
     "<div class='r_imageBox'></div>" +
+    "<label>Video link (optional, for example a YouTube link)</label>" +
+    "<input type='text' class='r_video' placeholder='https://www.youtube.com/watch?v=...'>" +
     "<label>Study materials (optional)</label>" +
     "<input type='text' class='r_study'>" +
     "<label>Time (minutes, required)</label>" +
@@ -211,9 +232,11 @@ function addRow(rowData) {
   const picker = createImagePicker(rowData ? getRowImages(rowData) : []);
   box.querySelector(".r_imageBox").appendChild(picker.element);
   box.imagePicker = picker;
+
   if (rowData) {
     box.querySelector(".r_wd").value = rowData.wd || "";
     box.querySelector(".r_vd").value = rowData.vd || "";
+    box.querySelector(".r_video").value = rowData.video || "";
     box.querySelector(".r_study").value = rowData.studyMaterials || "";
     box.querySelector(".r_time").value = rowData.time;
     box.querySelector(".r_isQuestion").checked = rowData.isQuestion === true;
@@ -229,7 +252,9 @@ function addRow(rowData) {
 function renumberRows() {
   const headings = document.querySelectorAll(".rowBox h4");
   for (let i = 0; i < headings.length; i++) {
-    headings[i].textContent = "Row " + (i + 1);}}
+    headings[i].textContent = "Row " + (i + 1);
+  }
+}
 function collectRows() {
   const boxes = document.getElementsByClassName("rowBox");
   const rows = [];
@@ -238,18 +263,19 @@ function collectRows() {
     const box = boxes[i];
     const vd = box.querySelector(".r_vd").value.trim();
     const images = box.imagePicker.getValue();
+    const video = box.querySelector(".r_video").value.trim();
     const studyMaterials = box.querySelector(".r_study").value.trim();
     const timeText = box.querySelector(".r_time").value;
     const isQuestion = box.querySelector(".r_isQuestion").checked;
     const answer = box.querySelector(".r_answer").value.trim();
-
-    if (vd === "" && images.length === 0 && studyMaterials === "") {
-      showMessage("Row " + (i + 1) + ": add at least a VD, an image or study materials.", "red");
+    if (vd === "" && images.length === 0 && video === "" && studyMaterials === "") {
+      showMessage("Row " + (i + 1) + ": add at least a VD, an image, a video link or study materials.", "red");
       return null;
     }
     if (timeText === "") {
       showMessage("Row " + (i + 1) + ": Time is required.", "red");
-      return null;}
+      return null;
+    }
     if (isQuestion && vd === "") {
       showMessage("Row " + (i + 1) + ": a question needs a VD (the question text).", "red");
       return null;
@@ -263,6 +289,7 @@ function collectRows() {
       wd: box.querySelector(".r_wd").value.trim(),
       vd: vd,
       images: images,
+      video: video,
       studyMaterials: studyMaterials,
       time: Number(timeText),
       isQuestion: isQuestion,
@@ -270,7 +297,7 @@ function collectRows() {
     });}
 
   return rows;
-}
+}=
 function saveSlide() {
   const type = document.getElementById("slideType").value;
   const title = document.getElementById("title").value.trim();
@@ -280,14 +307,15 @@ function saveSlide() {
     const text = document.getElementById("s_text").value.trim();
     const vd = document.getElementById("s_vd").value.trim();
     const images = simplePicker.getValue();
+    const video = document.getElementById("s_video").value.trim();
     const timeText = document.getElementById("s_time").value;
 
     if (title === "") {
       showMessage("Title is required for a simple slide.", "red");
       return;
     }
-    if (text === "" && vd === "" && images.length === 0) {
-      showMessage("Add some text, a VD or an image.", "red");
+    if (text === "" && vd === "" && images.length === 0 && video === "") {
+      showMessage("Add some text, a VD, an image or a video link.", "red");
       return;
     }
     if (timeText === "") {
@@ -301,6 +329,7 @@ function saveSlide() {
       text: text,
       vd: vd,
       images: images,
+      video: video,
       time: Number(timeText)
     };
   } else {
@@ -359,11 +388,13 @@ function saveSlide() {
     })
     .finally(function () {
       saveBtn.disabled = false;
-    });}
+    });
+}
 function resetFields() {
   document.getElementById("title").value = "";
   document.getElementById("s_text").value = "";
   document.getElementById("s_vd").value = "";
+  document.getElementById("s_video").value = "";
   document.getElementById("s_time").value = "";
   document.getElementById("rowsContainer").innerHTML = "";
   mountSimplePicker("");
@@ -374,7 +405,8 @@ function clearForm() {
 
   if (document.getElementById("slideType").value === "vq") {
     addRow();
-  }}
+  }
+}
 function startEdit(slide) {
   editingId = slide._id;
 
@@ -389,10 +421,10 @@ function startEdit(slide) {
   if (type === "simple") {
     document.getElementById("s_text").value = slide.text || "";
     document.getElementById("s_vd").value = slide.vd || "";
+    document.getElementById("s_video").value = slide.video || "";
     document.getElementById("s_time").value = slide.time;
     mountSimplePicker(getSlideImages(slide));
   } else {
-  
     document.getElementById("rowsContainer").innerHTML = "";
     for (let i = 0; i < slide.rows.length; i++) {
       addRow(slide.rows[i]);
@@ -436,7 +468,8 @@ function getSlideLabel(slide) {
     }
   }
 
-  return "(untitled)";}
+  return "(untitled)";
+}=
 function addPreviewParagraph(parent, text, className) {
   const p = document.createElement("p");
   p.textContent = text;
@@ -460,10 +493,74 @@ function addPreviewImage(parent, imageValue) {
 
   parent.appendChild(img);
 }
+function getVideoInfo(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (e) {
+    return { type: "none" };
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { type: "none" };
+  }
+
+  const host = parsed.hostname.replace(/^www\./, "").replace(/^m\./, "");
+  const parts = parsed.pathname.split("/").filter(Boolean);
+  let id = "";
+
+  if (host === "youtu.be" && parts.length > 0) {
+    id = parts[0];
+  } else if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    if (parts[0] === "watch") {
+      id = parsed.searchParams.get("v") || "";
+    } else if (parts[0] === "embed" || parts[0] === "shorts" || parts[0] === "live") {
+      id = parts[1] || "";
+    }
+  }
+
+  if (/^[A-Za-z0-9_-]{6,20}$/.test(id)) {
+    return { type: "youtube", id: id };
+  }
+  if (/\.(mp4|webm|ogg)$/i.test(parsed.pathname)) {
+    return { type: "file", url: parsed.href };
+  }
+  return { type: "link", url: parsed.href };
+}
+
+function addPreviewVideo(parent, url) {
+  const info = getVideoInfo(url);
+
+  if (info.type === "youtube") {
+    const frame = document.createElement("iframe");
+    frame.src = "https://www.youtube-nocookie.com/embed/" + info.id;
+    frame.style.width = "100%";
+    frame.style.maxWidth = "480px";
+    frame.style.aspectRatio = "16 / 9";
+    frame.style.border = "0";
+    frame.allowFullscreen = true;
+    parent.appendChild(frame);
+  } else if (info.type === "file") {
+    const video = document.createElement("video");
+    video.src = info.url;
+    video.controls = true;
+    video.style.maxWidth = "100%";
+    parent.appendChild(video);
+  } else if (info.type === "link") {
+    const link = document.createElement("a");
+    link.href = info.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Open the video";
+    parent.appendChild(link);
+  } else {
+    addPreviewParagraph(parent, "(the video link is not valid)", "previewHint");
+  }
+}
 function showPreview(slide, itemElement) {
   const box = document.getElementById("slidePreview");
   box.innerHTML = "";
 
+  // বর্তমান বাছাই করা slide-টাকে তালিকায় হাইলাইট করা
   const allItems = document.getElementsByClassName("slideItem");
   for (let i = 0; i < allItems.length; i++) {
     allItems[i].classList.remove("selected");
@@ -472,12 +569,10 @@ function showPreview(slide, itemElement) {
 
   const card = document.createElement("div");
   card.className = "previewSlide";
-
   const header = document.createElement("div");
   header.className = "slideHeader";
   header.textContent = getSlideLabel(slide);
   card.appendChild(header);
-
   const body = document.createElement("div");
   body.className = "slideBody";
 
@@ -489,7 +584,6 @@ function showPreview(slide, itemElement) {
 
       const rowBlock = document.createElement("div");
       rowBlock.className = "rowBlock";
-
       if (row.vd) {
         addPreviewParagraph(rowBlock, row.vd);
       }
@@ -497,6 +591,10 @@ function showPreview(slide, itemElement) {
       const rowImgs = getRowImages(row);
       for (let k = 0; k < rowImgs.length; k++) {
         addPreviewImage(rowBlock, rowImgs[k]);
+      }
+
+      if (row.video) {
+        addPreviewVideo(rowBlock, row.video);
       }
 
       if (row.studyMaterials) {
@@ -536,11 +634,14 @@ function showPreview(slide, itemElement) {
       addPreviewImage(body, slideImgs[k]);
     }
 
+    if (slide.video) {
+      addPreviewVideo(body, slide.video);
+    }
+
     totalTime = Number(slide.time);
   }
 
   card.appendChild(body);
-
   const roundedTime = Math.round(totalTime * 100) / 100;
 
   const footer = document.createElement("div");
@@ -548,12 +649,13 @@ function showPreview(slide, itemElement) {
   footer.textContent = "Time: " + roundedTime + " min";
   card.appendChild(footer);
 
-  box.appendChild(card);}
+  box.appendChild(card);
+}
 
 function clearPreview() {
   document.getElementById("slidePreview").innerHTML =
-    "<span class='previewHint'>No slide selected yet.</span>";}
-
+    "<span class='previewHint'>No slide selected yet.</span>";
+}
 function findSlideLabelById(slideId) {
   if (!slideId) {
     return "-";
@@ -561,7 +663,9 @@ function findSlideLabelById(slideId) {
 
   for (let i = 0; i < allSlides.length; i++) {
     if (allSlides[i]._id === slideId) {
-      return getSlideLabel(allSlides[i]);}}
+      return getSlideLabel(allSlides[i]);
+    }
+  }
   return "(deleted slide)";
 }
 function addAnswerCell(row, text, className) {
@@ -586,7 +690,8 @@ function loadAnswers() {
       box.innerHTML = "";
 
       if (!Array.isArray(answers)) {
-        throw new Error("Unexpected reply from the server");}
+        throw new Error("Unexpected reply from the server");
+      }
       allAnswers = answers;
 
       if (answers.length === 0) {
@@ -671,8 +776,6 @@ function csvCell(value) {
 
   return text;
 }
-
-
 function downloadAnswersCsv() {
   if (allAnswers.length === 0) {
     alert("There are no answers to download yet.");
@@ -704,7 +807,6 @@ function downloadAnswersCsv() {
     lines.push(cells.map(csvCell).join(","));
   }
 
-
   const csvText = "\uFEFF" + lines.join("\r\n");
 
   const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
@@ -723,7 +825,6 @@ function downloadAnswersCsv() {
 
   URL.revokeObjectURL(url);
 }
-
 function loadSlideList() {
   const listBox = document.getElementById("slideList");
 
@@ -734,7 +835,6 @@ function loadSlideList() {
     .then(function (slides) {
       listBox.innerHTML = "";
       clearPreview();
-
       allSlides = slides;
       loadAnswers();
 
@@ -804,7 +904,6 @@ function loadSlideList() {
       listBox.textContent = "Could not load slides. Is the backend running?";
     });
 }
-
 function moveSlide(index, direction) {
   const target = index + direction;
 
@@ -839,9 +938,7 @@ function moveSlide(index, direction) {
     })
     .catch(function (error) {
       showMessage(error.message, "red");
-    });
-}
-
+    });}
 function deleteSlide(id, name) {
   const sure = confirm("Delete the slide \"" + name + "\"?");
   if (!sure) {
@@ -854,7 +951,6 @@ function deleteSlide(id, name) {
     method: "DELETE"
   })
     .then(function (response) {
-      
       return response.text().then(function (text) {
         let data = null;
 
@@ -879,7 +975,6 @@ function deleteSlide(id, name) {
       });
     })
     .then(function () {
-    
       if (id === editingId) {
         exitEditMode();
       }
@@ -893,8 +988,6 @@ function deleteSlide(id, name) {
 }
 
 document.getElementById("slideType").addEventListener("change", toggleFields);
-
-
 document.getElementById("addRowBtn").addEventListener("click", function () {
   addRow();
 });

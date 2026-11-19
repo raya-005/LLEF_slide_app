@@ -89,6 +89,56 @@ function getRowImages(row) {
   }
   return row.multimedia ? [row.multimedia] : [];
 }
+// ভিডিওর লিংক বুঝে নেওয়া: YouTube হলে ভেতরে চলে (embed), সরাসরি .mp4/.webm ফাইল হলে video player,
+// অন্য যেকোনো লিংক (যেমন YouTube clip) নতুন tab-এ খোলার বাটন হয়ে দেখায়
+function getVideoInfo(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (e) {
+    return { type: "none" };
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { type: "none" };
+  }
+
+  const host = parsed.hostname.replace(/^www\./, "").replace(/^m\./, "");
+  const pathParts = parsed.pathname.split("/").filter(Boolean);
+  let id = "";
+
+  if (host === "youtu.be" && pathParts.length > 0) {
+    id = pathParts[0];
+  } else if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    if (pathParts[0] === "watch") {
+      id = parsed.searchParams.get("v") || "";
+    } else if (pathParts[0] === "embed" || pathParts[0] === "shorts" || pathParts[0] === "live") {
+      id = pathParts[1] || "";
+    }
+  }
+
+  if (/^[A-Za-z0-9_-]{6,20}$/.test(id)) {
+    return { type: "youtube", id: id };
+  }
+  if (/\.(mp4|webm|ogg)$/i.test(parsed.pathname)) {
+    return { type: "file", url: parsed.href };
+  }
+  return { type: "link", url: parsed.href };
+}
+function buildVideoHTML(url) {
+  const info = getVideoInfo(url);
+
+  if (info.type === "youtube") {
+    return "<iframe src='https://www.youtube-nocookie.com/embed/" + escapeHtml(info.id) +
+      "' style='width:100%; max-width:560px; aspect-ratio:16/9; border:0;' allowfullscreen></iframe>";
+  }
+  if (info.type === "file") {
+    return "<video src='" + escapeHtml(info.url) + "' controls style='max-width:100%; max-height:360px;'></video>";
+  }
+  if (info.type === "link") {
+    return "<a href='" + escapeHtml(info.url) + "' target='_blank' rel='noopener noreferrer'>Open the video</a>";
+  }
+  return "<p>(the video link is not valid)</p>";
+}
 function buildPartsForSlide(slide) {
   const parts = [];
 
@@ -119,6 +169,15 @@ function buildPartsForSlide(slide) {
           time: hasText ? 0 : Number(row.time)
         });
       }
+
+      if (row.video) {
+        parts.push({
+          kind: "video",
+          startsRow: !hasText && rowImages.length === 0,
+          video: row.video,
+          time: (hasText || rowImages.length > 0) ? 0 : Number(row.time)
+        });
+      }
     }
   } else {
     const hasText = Boolean(slide.text) || Boolean(slide.vd);
@@ -140,7 +199,14 @@ function buildPartsForSlide(slide) {
         kind: "media",
         startsRow: !hasText,
         images: slideImages,
-        time: hasText ? 0 : Number(slide.time)});}}
+        time: hasText ? 0 : Number(slide.time)});}
+
+    if (slide.video) {
+      parts.push({
+        kind: "video",
+        startsRow: !hasText && slideImages.length === 0,
+        video: slide.video,
+        time: (hasText || slideImages.length > 0) ? 0 : Number(slide.time)});}}
 
   return parts;}
 function getSpokenText(part) {
@@ -206,6 +272,10 @@ function revealNextPart() {
       partHTML = partHTML + "<img src='" + escapeHtml(part.images[k]) + "' style='max-height:320px; max-width:100%; object-fit:contain;'>";
     }
     partHTML = partHTML + "</div>";
+  }
+
+  if (part.kind === "video") {
+    partHTML = partHTML + buildVideoHTML(part.video);
   }
 
   partHTML = partHTML + "</div>";

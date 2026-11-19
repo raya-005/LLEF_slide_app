@@ -39,6 +39,20 @@ function readImages(images, legacy) {
   if (list.length === 0 && !isBlank(legacy)) {
     list = [legacy];}
   return list;}
+function cleanVideo(value) {
+  if (isBlank(value)) {
+    return { value: "" };}
+  const link = String(value).trim();
+  if (link.length > 500) {
+    return { error: "The video link is too long." };}
+  let parsed;
+  try {
+    parsed = new URL(link);
+  } catch (e) {
+    return { error: "The video link is not a valid web address." };}
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { error: "The video link must start with http:// or https://" };}
+  return { value: link };}
 function checkImages(list) {
   if (list.length > MAX_IMAGES) {
     return "Too many images. The maximum is " + MAX_IMAGES + ".";}
@@ -51,8 +65,11 @@ function buildSlideData(body) {
 
   if (slideType === "simple") {
     const images = readImages(body.images, body.image);
-    if (isBlank(body.text) && isBlank(body.vd) && images.length === 0) {
-      return { error: "Add some text, a VD or an image." };}
+    const video = cleanVideo(body.video);
+    if (video.error) {
+      return { error: video.error };}
+    if (isBlank(body.text) && isBlank(body.vd) && images.length === 0 && video.value === "") {
+      return { error: "Add some text, a VD, an image or a video link." };}
     if (isBlank(body.time) || Number.isNaN(Number(body.time))) {
       return { error: "Time must be a number." };}
     const imageError = checkImages(images);
@@ -67,6 +84,7 @@ function buildSlideData(body) {
         vd: body.vd || "",
         image: "",
         images: images,
+        video: video.value,
         time: Number(body.time),
         rows: []}};}
   if (!Array.isArray(body.rows) || body.rows.length === 0) {
@@ -77,8 +95,12 @@ function buildSlideData(body) {
     const row = body.rows[i];
     const rowName = "Row " + (i + 1) + ": ";
     const rowImages = readImages(row.images, row.multimedia);
-    if (isBlank(row.vd) && rowImages.length === 0 && isBlank(row.studyMaterials)) {
-      return { error: rowName + "add at least a VD, an image or study materials." };
+    const rowVideo = cleanVideo(row.video);
+    if (rowVideo.error) {
+      return { error: rowName + rowVideo.error };
+    }
+    if (isBlank(row.vd) && rowImages.length === 0 && rowVideo.value === "" && isBlank(row.studyMaterials)) {
+      return { error: rowName + "add at least a VD, an image, a video link or study materials." };
     }
     if (isBlank(row.time) || Number.isNaN(Number(row.time))) {
       return { error: rowName + "Time must be a number." };
@@ -100,6 +122,7 @@ function buildSlideData(body) {
       vd: row.vd || "",
       multimedia: "",
       images: rowImages,
+      video: rowVideo.value,
       studyMaterials: row.studyMaterials || "",
       time: Number(row.time),
       isQuestion: isQuestion,
@@ -113,6 +136,7 @@ function buildSlideData(body) {
       vd: "",
       image: "",
       images: [],
+      video: "",
       time: 0,
       rows: rows}};}
 
@@ -136,6 +160,8 @@ app.post("/api/slides", async function (req, res) {
     if (result.error) {
       return res.status(400).json({ message: result.error });
     }
+
+    // নতুন slide সবার শেষে বসে
     const last = await Slide.findOne({ order: { $type: "number" } }).sort({ order: -1 });
     result.data.order = last ? last.order + 1 : 0;
 
@@ -235,6 +261,9 @@ app.get("/api/answers", async function (req, res) {
     res.json(answers);
   } catch (error) {
     console.log("Error fetching answers:", error);
-    res.status(500).json({ message: "Error fetching answers" });}});
+    res.status(500).json({ message: "Error fetching answers" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log("Server is running on http://localhost:" + PORT);});
